@@ -1,0 +1,7 @@
+# Direct third-party imports used by the current Python scripts.
+# Versions observed in the available project environment during this audit.
+numpy==2.0.2
+scikit-learn==1.5.2
+joblib==1.4.2
+streamlit>=1.49,<2
+plotly>=5.24,<7
