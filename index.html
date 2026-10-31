@@ -1,0 +1,2137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>SPS Control Room</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control room — slim icon rail, status top bar, 3D twin as the dominant canvas with a docked inspector; tables and charts sit below in a quiet grid. */
+:root{
+  --bg:#0d1110; --bg-2:#111615; --panel:#151b1a; --panel-2:#1a211f; --raise:#202826; --hover:#232c2a;
+  --line:#242d2b; --line-2:#313c39; --text:#e1e7e4; --text-2:#b3beba; --muted:#86948f; --dim:#64716d;
+  --steel:#6f94ba; --steel-2:#98b7d6; --steel-ink:#0b141d;
+  --ok:#3fb67f; --ok-bg:rgba(63,182,127,.13);
+  --warn:#e3a23b; --warn-bg:rgba(227,162,59,.13);
+  --crit:#e8574e; --crit-bg:rgba(232,87,78,.14);
+  --sel:#88b9ff; --sel-bg:rgba(136,185,255,.12);
+  --f-display:"Barlow Semi Condensed","Barlow","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r-sm:4px; --r-md:6px; --r-lg:8px;
+  --top:56px; --rail:76px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);font-size:14.5px;line-height:1.45;overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:var(--rail) 1fr;grid-template-rows:var(--top) 1fr;height:100%}
+.sidebar{grid-row:1 / span 2;background:var(--bg-2);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;padding:10px 0 14px;gap:4px;padding-left:env(safe-area-inset-left,0px)}
+.brandmark{width:40px;height:40px;display:grid;place-items:center;margin-bottom:14px}
+.nav{display:flex;flex-direction:column;gap:4px;width:100%;padding:0 8px}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 8px;border-radius:var(--r-md);color:var(--muted);text-decoration:none;font-size:11.5px;font-weight:500;letter-spacing:.02em;position:relative;transition:background .15s,color .15s}
+.nav a:hover{background:var(--panel-2);color:var(--text)}
+.nav a.active{color:var(--text);background:var(--panel-2)}
+.nav a.active::before{content:"";position:absolute;left:-8px;top:10px;bottom:10px;width:2px;background:var(--steel-2);border-radius:2px}
+.nav a .badge{position:absolute;top:6px;right:12px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--crit);color:#fff;font:600 10px/16px var(--f-mono);text-align:center}
+.nav svg{width:20px;height:20px}
+.sidebar .foot{margin-top:auto;color:var(--dim);font:500 10px var(--f-mono);letter-spacing:.06em}
+
+.topbar{display:flex;align-items:center;gap:18px;padding-block:0;padding-left:20px;padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--bg-2);min-width:0}
+.brand{display:flex;align-items:baseline;gap:10px;white-space:nowrap}
+.brand b{font:700 19px/1 var(--f-display);letter-spacing:.06em}
+.brand span{color:var(--muted);font-size:12.5px}
+.tb-sep{width:1px;height:24px;background:var(--line-2)}
+.netname{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.netname small{color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.netname strong{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border:1px dashed var(--line-2);border-radius:var(--r-sm);color:var(--text-2);font:500 10.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.health{display:flex;align-items:center;gap:10px}
+.health .ring{width:30px;height:30px}
+.health .lbl{display:flex;flex-direction:column;line-height:1.1}
+.health .lbl small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.health .lbl strong{font:600 15px var(--f-mono)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.clock{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15;white-space:nowrap}
+.clock strong{font:500 13px var(--f-mono)}
+.clock small{color:var(--muted);font-size:11px}
+.iconbtn{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--line);background:var(--panel);border-radius:var(--r-md);color:var(--text-2);transition:background .15s,border-color .15s}
+.iconbtn:hover{background:var(--hover);border-color:var(--line-2);color:var(--text)}
+.iconbtn svg{width:17px;height:17px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--raise);border:1px solid var(--line-2);display:grid;place-items:center;font:600 12px var(--f-mono);color:var(--text-2)}
+
+/* simulation control */
+.sim{display:flex;align-items:center;gap:6px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px;border-radius:var(--r-md);border:1px solid var(--line-2);background:var(--panel-2);color:var(--text);font-weight:500;font-size:13px;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn:hover{background:var(--hover);border-color:#405049}
+.btn svg{width:14px;height:14px}
+.btn.primary{background:var(--steel);border-color:var(--steel);color:var(--steel-ink);font-weight:600}
+.btn.primary:hover{background:var(--steel-2);border-color:var(--steel-2)}
+.btn.ghost{background:transparent}
+.btn.sm{height:28px;padding:0 10px;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.running{display:inline-flex;align-items:center;gap:7px;color:var(--text-2);font:500 11.5px var(--f-mono);padding:0 6px;white-space:nowrap}
+.running i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(63,182,127,.6);animation:pulse 1.6s infinite}
+.running.paused i{background:var(--warn);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,182,127,.55)}70%{box-shadow:0 0 0 7px rgba(63,182,127,0)}100%{box-shadow:0 0 0 0 rgba(63,182,127,0)}}
+
+.popover{position:absolute;top:calc(var(--top) - 4px);right:max(16px,env(safe-area-inset-right,0px));z-index:50;width:280px;background:var(--panel-2);border:1px solid var(--line-2);border-radius:var(--r-lg);box-shadow:0 18px 40px rgba(0,0,0,.45);padding:14px;display:flex;flex-direction:column;gap:12px}
+.popover h4{margin:0;font:600 12px var(--f-body);color:var(--muted);letter-spacing:.07em;text-transform:uppercase}
+.row-between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* ---------- views ---------- */
+.views{position:relative;overflow:hidden;min-width:0}
+.view{position:absolute;inset:0;overflow:auto;padding-block:18px 28px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+.view-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.view-head h1{margin:0;font:600 22px/1.1 var(--f-display);letter-spacing:.01em;text-wrap:balance}
+.view-head p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.eyebrow{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);min-width:0}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-h h2,.panel-h h3{margin:0;font:600 14.5px var(--f-display);letter-spacing:.03em}
+.panel-h .sub{color:var(--muted);font-size:12px}
+.panel-b{padding:14px}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.kpi{background:var(--panel);padding:12px 16px 13px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .k{color:var(--muted);font-size:12px;letter-spacing:.05em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.kpi .k i{width:7px;height:7px;border-radius:2px;display:inline-block}
+.kpi .v{font:500 26px/1.1 var(--f-mono);letter-spacing:-.01em}
+.kpi .v small{font-size:13px;color:var(--muted);margin-left:3px}
+.kpi .d{color:var(--muted);font-size:12px}
+.meter{height:4px;background:var(--raise);border-radius:2px;overflow:hidden;margin-top:4px}
+.meter b{display:block;height:100%;border-radius:2px;transition:width .5s,background .5s}
+
+/* grids */
+.ov-main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px}
+.ov-lower{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+.ov-trends{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+
+/* health summary band */
+.hsum{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 8px 8px;min-width:0}
+.hb-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 14px 4px;min-height:30px;flex-wrap:wrap}
+.hb-focus{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-2)}
+.hb-focus .fchip{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 4px 0 10px;border-radius:13px;background:var(--sel-bg);border:1px solid rgba(136,185,255,.35);color:var(--text)}
+.hb-focus .fchip button{border:0;background:transparent;color:var(--muted);height:22px;width:22px;border-radius:11px;display:grid;place-items:center}
+.hb-focus .fchip button:hover{background:var(--raise);color:var(--text)}
+.hb-items{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.hb{display:grid;grid-template-columns:108px minmax(0,1fr);gap:18px;align-items:center;padding:12px 20px 12px 16px;border:0;background:transparent;text-align:left;border-radius:var(--r-md);position:relative;color:inherit;transition:background .15s;min-width:0}
+.hb:not(:first-child)::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:1px;background:var(--line)}
+.hb:hover{background:var(--panel-2)}
+.hb.on{background:var(--sel-bg)}
+.hb svg{width:108px;height:108px;display:block;overflow:visible}
+.hb .rv{font:500 26px var(--f-mono);fill:var(--text);letter-spacing:-.02em}
+.hb .ru{font:500 9.5px var(--f-mono);fill:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.hb-txt{min-width:0}
+.hb-lbl{font:500 11px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.hb-state{font:600 18px/1.15 var(--f-display);margin-top:3px;letter-spacing:.02em}
+.hb-detail{display:flex;flex-direction:column;gap:2px;margin-top:7px;font:500 12px var(--f-mono);color:var(--text-2)}
+.hb-detail span{display:flex;align-items:center;gap:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb-detail i{width:7px;height:7px;border-radius:50%;flex:none}
+.hb-act{margin-top:8px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.hb:hover .hb-act,.hb.on .hb-act{color:var(--sel)}
+.slot-viewer{height:clamp(480px,64vh,780px);min-width:0}
+.net-main{display:grid;grid-template-columns:200px minmax(0,1fr) 360px;gap:16px}
+.net-main .slot-viewer{height:clamp(520px,calc(100vh - 170px),900px)}
+.an-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.an-grid .wide{grid-column:1 / -1}
+.al-main{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:16px;align-items:start}
+
+/* ---------- 3D viewer ---------- */
+.viewer{position:relative;height:100%;width:100%;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,#18201e 0%,#0f1413 70%);isolation:isolate}
+.viewer-canvas{position:absolute;inset:0}
+.viewer-canvas canvas{display:block;width:100%;height:100%;touch-action:none}
+.viewer-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.v-lbl{position:absolute;left:0;top:0;will-change:transform;white-space:nowrap;pointer-events:none}
+.v-seg{display:inline-flex;align-items:center;gap:6px;padding:3px 8px 3px 6px;background:rgba(14,19,18,.82);border:1px solid var(--line-2);border-radius:var(--r-sm);font:500 11.5px var(--f-mono);color:var(--text);backdrop-filter:blur(4px);transition:border-color .2s,background .2s;pointer-events:auto;cursor:pointer}
+.v-seg i{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.v-seg.warning i{background:var(--warn)} .v-seg.critical i{background:var(--crit)}
+.v-seg.sel{border-color:var(--sel);background:rgba(22,34,48,.9)}
+.v-seg.loc{border-color:var(--crit)}
+.v-node{font:500 10.5px var(--f-mono);color:var(--text-2);letter-spacing:.04em;background:rgba(14,19,18,.6);padding:1px 5px;border-radius:3px}
+.v-node em{font-style:normal;color:var(--muted);margin-left:5px}
+.v-sensor{font:500 10.5px var(--f-mono);color:var(--sel);background:rgba(14,19,18,.85);padding:2px 6px;border-radius:3px;border:1px solid rgba(136,185,255,.4)}
+.viewer-tip{position:absolute;z-index:5;pointer-events:none;background:#0a0e0d;border:1px solid var(--line-2);border-radius:var(--r-md);padding:8px 10px;font-size:12px;min-width:170px;box-shadow:0 10px 26px rgba(0,0,0,.4)}
+.viewer-tip .t{font:600 12px var(--f-mono);display:flex;justify-content:space-between;gap:10px}
+.viewer-tip .m{color:var(--muted);margin-top:2px}
+.viewer-tools{position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:3}
+.viewer-tools .iconbtn{background:rgba(21,27,26,.86);backdrop-filter:blur(4px)}
+.viewer-tools .iconbtn.on{border-color:var(--steel);color:var(--steel-2)}
+.viewer-legend{position:absolute;left:12px;bottom:12px;z-index:3;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;padding:7px 10px;background:rgba(14,19,18,.8);border:1px solid var(--line);border-radius:var(--r-md);font-size:11.5px;color:var(--text-2);max-width:calc(100% - 24px)}
+.viewer-legend span{display:inline-flex;align-items:center;gap:6px}
+.viewer-legend i{width:14px;height:4px;border-radius:2px;display:inline-block}
+.viewer-legend .note{color:var(--dim);font-family:var(--f-mono);font-size:10.5px}
+.viewer-hint{position:absolute;right:12px;bottom:12px;z-index:3;color:var(--dim);font:500 10.5px var(--f-mono);text-align:right}
+.viewer.compact .loc-banner,.viewer.compact .viewer-legend .note{display:none}
+.viewer.compact .viewer-legend{font-size:10.5px;gap:2px 10px;padding:5px 8px}
+.viewer.compact .viewer-tools .iconbtn{width:30px;height:30px}
+.viewer-loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:500 12px var(--f-mono);letter-spacing:.06em;z-index:6;background:var(--bg-2);transition:opacity .4s}
+.viewer-loading.done{opacity:0;pointer-events:none}
+
+.loc-banner{position:absolute;top:12px;left:12px;z-index:3;width:min(330px,calc(100% - 180px));background:rgba(17,22,21,.9);border:1px solid var(--line-2);border-radius:var(--r-lg);backdrop-filter:blur(6px);overflow:hidden;cursor:pointer;transition:border-color .2s}
+.loc-banner:hover{border-color:#4a5955}
+.loc-banner .lb-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px 0}
+.loc-banner .lb-main{padding:4px 12px 10px}
+.loc-banner .lb-seg{font:600 20px/1.15 var(--f-display);letter-spacing:.02em}
+.loc-banner .lb-seg span{color:var(--muted);font:500 12px var(--f-body);margin-left:6px;letter-spacing:0}
+.loc-banner .lb-note{padding:6px 12px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px;display:flex;justify-content:space-between;gap:8px}
+.loc-banner.localized{border-color:rgba(232,87,78,.55)}
+.loc-banner.localized .lb-seg{color:#ff8a82}
+.loc-banner.ambiguous{border-color:rgba(227,162,59,.5)}
+.loc-banner.ambiguous .lb-seg{color:#f2bd63}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:11px;font:500 11.5px var(--f-body);letter-spacing:.02em;white-space:nowrap;border:1px solid transparent}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip.healthy{color:var(--ok);background:var(--ok-bg)}
+.chip.warning{color:var(--warn);background:var(--warn-bg)}
+.chip.critical{color:var(--crit);background:var(--crit-bg)}
+.chip.open{color:var(--text);background:var(--raise);border-color:var(--line-2)}
+.chip.open::before{background:var(--crit)}
+.chip.ack{color:var(--text-2);background:var(--raise)}
+.chip.ack::before{background:var(--warn)}
+.chip.resolved{color:var(--muted);background:transparent;border-color:var(--line-2)}
+.chip.resolved::before{background:var(--dim)}
+.chip.localized{color:#ff8a82;background:var(--crit-bg)}
+.chip.ambiguous{color:#f2bd63;background:var(--warn-bg)}
+.chip.insufficient{color:var(--text-2);background:var(--raise)}
+.chip.plain::before{display:none}
+.tag{font:500 11.5px var(--f-mono);color:var(--text-2);background:var(--raise);border:1px solid var(--line);border-radius:var(--r-sm);padding:1px 6px;cursor:pointer;white-space:nowrap}
+.tag:hover{border-color:var(--steel);color:var(--text)}
+
+/* ---------- inspector ---------- */
+.inspector{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.slot-insp{min-width:0;height:clamp(480px,64vh,780px)}
+.net-main .slot-insp{height:clamp(520px,calc(100vh - 170px),900px)}
+.insp-scroll{overflow:auto;flex:1;min-height:0}
+.insp-head{padding:14px 16px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px;animation:fadeUp .25s ease}
+.insp-head .row-between h2{margin:0;font:600 21px/1.1 var(--f-display);letter-spacing:.02em}
+.insp-head .meta{color:var(--muted);font-size:12.5px}
+.insp-sec{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.insp-sec:last-child{border-bottom:0}
+.insp-sec h4{margin:0;font:500 11px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+@keyframes fadeUp{from{opacity:.0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+.kv div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.kv small{color:var(--muted);font-size:11.5px}
+.kv b{font:500 14px var(--f-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reading{display:flex;align-items:baseline;gap:8px}
+.reading .big{font:500 36px/1 var(--f-mono);letter-spacing:-.02em}
+.reading .u{color:var(--muted);font:500 14px var(--f-mono)}
+.dev{font:500 12.5px var(--f-mono)}
+.dev.neg{color:#ff8a82} .dev.pos{color:#f2bd63} .dev.ok{color:var(--muted)}
+.mini-chart{position:relative;height:150px}
+.list{display:flex;flex-direction:column}
+.li{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 8px;margin:0 -8px;border-radius:var(--r-md);cursor:pointer;transition:background .12s}
+.li:hover{background:var(--panel-2)}
+.li.sel{background:var(--sel-bg)}
+.li .sid{font:500 12.5px var(--f-mono)}
+.li .desc{color:var(--muted);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .val{font:500 12.5px var(--f-mono);text-align:right}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.dot.healthy{background:var(--ok)} .dot.warning{background:var(--warn)} .dot.critical{background:var(--crit)}
+.empty{padding:22px 16px;text-align:center;color:var(--muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.empty svg{width:28px;height:28px;color:var(--dim)}
+.evidence{display:flex;flex-direction:column;gap:8px}
+.ev{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:start}
+.ev svg{width:16px;height:16px;margin-top:2px;color:var(--steel-2)}
+.ev b{font-weight:600;font-size:13px}
+.ev p{margin:1px 0 0;color:var(--muted);font:400 12px var(--f-mono)}
+.scorebars{display:flex;flex-direction:column;gap:7px}
+.sb{display:grid;grid-template-columns:42px 1fr 40px;align-items:center;gap:10px;font:500 12px var(--f-mono);cursor:pointer}
+.sb .track{height:6px;background:var(--raise);border-radius:3px;position:relative;overflow:visible}
+.sb .track b{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--steel);transition:width .5s,background .3s}
+.sb .track .th{position:absolute;top:-3px;bottom:-3px;width:1px;background:var(--muted);opacity:.6}
+.sb.cand-l .track b{background:var(--crit)} .sb.cand-a .track b{background:var(--warn)}
+.sb span:last-child{text-align:right;color:var(--text-2)}
+.note{color:var(--muted);font-size:11.5px;line-height:1.45}
+
+/* ---------- tables ---------- */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.input,.select{height:30px;border:1px solid var(--line-2);background:var(--bg-2);border-radius:var(--r-md);padding:0 10px;font-size:13px;color:var(--text)}
+.input{width:170px}
+.input::placeholder{color:var(--dim)}
+.select{padding-right:6px}
+.tbl-wrap{overflow:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{position:sticky;top:0;background:var(--panel);text-align:left;font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:1}
+.tbl td{padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl tbody tr{cursor:pointer;transition:background .12s}
+.tbl tbody tr:hover{background:var(--panel-2)}
+.tbl tbody tr.sel{background:var(--sel-bg);box-shadow:inset 2px 0 0 var(--sel)}
+.tbl tbody tr.flash{animation:flash 1.2s ease}
+@keyframes flash{0%{background:rgba(232,87,78,.18)}100%{background:transparent}}
+.tbl td.m{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tbl td.r,.tbl th.r{text-align:right}
+.tbl td.desc{white-space:normal;min-width:240px;color:var(--text-2)}
+.devbar{display:inline-flex;align-items:center;gap:8px}
+.devbar .tr{width:56px;height:4px;background:var(--raise);border-radius:2px;position:relative}
+.devbar .tr b{position:absolute;top:0;bottom:0;left:0;border-radius:2px}
+.muted{color:var(--muted)}
+.count-chips{display:flex;gap:6px;flex-wrap:wrap}
+
+/* segmented */
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:var(--r-md);overflow:hidden;background:var(--bg-2)}
+.seg button{border:0;background:transparent;padding:0 11px;height:28px;font:500 12px var(--f-mono);color:var(--muted);border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--raise);color:var(--text)}
+.pickers{display:flex;gap:6px;flex-wrap:wrap}
+.pick{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:13px;border:1px solid var(--line-2);background:transparent;font:500 11.5px var(--f-mono);color:var(--muted);transition:all .15s}
+.pick i{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.pick.on{color:var(--text);border-color:#43524d;background:var(--panel-2)}
+.pick:hover{color:var(--text)}
+.chart-box{position:relative;height:280px}
+.chart-box.tall{height:330px}
+.chart-box.short{height:200px}
+.loc-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px}
+.status-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.status-line strong{font:600 18px var(--f-display);letter-spacing:.02em}
+.legend-inline{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-2)}
+.legend-inline span{display:inline-flex;align-items:center;gap:6px}
+.legend-inline i{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* network rail */
+.seg-rail{display:flex;flex-direction:column;gap:6px}
+.seg-card{padding:10px 12px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--panel);cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:border-color .15s,background .15s;text-align:left}
+.seg-card:hover{border-color:var(--line-2);background:var(--panel-2)}
+.seg-card.sel{border-color:var(--sel);background:var(--sel-bg)}
+.seg-card .row-between b{font:600 14px var(--f-mono)}
+.seg-card small{color:var(--muted);font-size:12px}
+.seg-card .vals{font:500 12px var(--f-mono);color:var(--text-2);display:flex;justify-content:space-between}
+.seg-card.loc{border-color:rgba(232,87,78,.6)}
+
+/* alerts */
+.inv .slot-viewer{height:280px}
+.inv-sec{padding:12px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.inv-sec h4{margin:0;font:500 11px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+
+/* toasts */
+.toasts{position:fixed;top:calc(var(--top) + 12px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));z-index:80;display:flex;flex-direction:column;gap:8px;width:min(340px,calc(100vw - 32px))}
+.toast{background:var(--panel-2);border:1px solid var(--line-2);border-radius:var(--r-lg);padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;box-shadow:0 14px 34px rgba(0,0,0,.45);animation:toastIn .3s ease}
+.toast.out{animation:toastOut .3s ease forwards}
+.toast .dot{margin-top:6px}
+.toast b{font-size:13px;font-weight:600}
+.toast p{margin:2px 0 0;color:var(--muted);font-size:12px}
+@keyframes toastIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateX(16px)}}
+
+.scroll-note{color:var(--dim);font:400 11px var(--f-mono)}
+
+/* ---------- responsive ---------- */
+@media (max-width:1400px){ .ov-main,.al-main{grid-template-columns:minmax(0,1fr) 330px} .net-main{grid-template-columns:180px minmax(0,1fr) 330px} }
+@media (max-width:1180px){
+  .net-main{grid-template-columns:minmax(0,1fr) 320px}
+  .seg-rail{grid-column:1 / -1;flex-direction:row;overflow-x:auto}
+  .seg-card{min-width:170px}
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ov-lower{grid-template-columns:minmax(0,1fr)}
+  .hb-items{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hb:nth-child(3)::before{display:none}
+  .tb-hide-md{display:none}
+}
+@media (max-width:980px){
+  .ov-main,.net-main,.al-main,.an-grid,.loc-layout{grid-template-columns:minmax(0,1fr)}
+  .slot-insp,.net-main .slot-insp{height:auto;max-height:none}
+  .inspector{height:auto}
+  .slot-viewer,.net-main .slot-viewer{height:clamp(380px,58vh,620px)}
+}
+@media (max-width:760px){
+  :root{--rail:0px}
+  .app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}
+  .sidebar{grid-row:2;flex-direction:row;padding:4px max(16px,env(safe-area-inset-right,0px)) 4px max(16px,env(safe-area-inset-left,0px));border-right:0;border-bottom:1px solid var(--line)}
+  .sidebar .brandmark,.sidebar .foot{display:none}
+  .nav{flex-direction:row;padding:0;gap:2px}
+  .nav a{flex:1;flex-direction:row;justify-content:center;padding:8px 4px;font-size:12px}
+  .nav a.active::before{left:12px;right:12px;top:auto;bottom:-4px;width:auto;height:2px}
+  .nav a .badge{top:2px;right:4px}
+  .topbar{grid-row:1;flex-wrap:wrap;height:auto;padding-block:8px;gap:10px;padding-left:max(16px,env(safe-area-inset-left,0px))}
+  .tb-hide-sm{display:none}
+  .tb-right{gap:8px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ov-trends{grid-template-columns:minmax(0,1fr)}
+  .hb{grid-template-columns:76px minmax(0,1fr);gap:12px;padding:10px 10px}
+  .hb svg{width:76px;height:76px}
+  .hb-detail{display:none}
+  .hb-state{font-size:15px}
+  .view{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .loc-banner{width:calc(100% - 24px)}
+  .viewer-tools{top:auto;bottom:56px}
+  .viewer-hint{display:none}
+  .input{width:100%}
+  .popover{top:110px}
+}
+@media (max-width:460px){ .hb-items{grid-template-columns:minmax(0,1fr)} .hb::before{display:none} .hb + .hb{border-top:1px solid var(--line);border-radius:0} }
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;transition-duration:.001s!important}}
+</style>
+
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="brandmark" aria-hidden="true">
+      <svg viewBox="0 0 40 40" width="36" height="36"><rect x="1" y="1" width="38" height="38" rx="8" fill="#1a2220" stroke="#313c39"/><path d="M8 20h9m6 0h9M20 9v8m0 6v8" stroke="#98b7d6" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="20" r="3.4" fill="none" stroke="#3fb67f" stroke-width="2"/></svg>
+    </div>
+    <nav class="nav" id="nav">
+      <a href="#overview" data-route="overview"></a>
+      <a href="#network" data-route="network"></a>
+      <a href="#analytics" data-route="analytics"></a>
+      <a href="#alerts" data-route="alerts"></a>
+    </nav>
+    <div class="foot">v2.4</div>
+  </aside>
+
+  <header class="topbar" id="topbar">
+    <div class="brand"><b>SPS</b><span class="tb-hide-md">Smart Piping System</span></div>
+    <div class="tb-sep tb-hide-sm"></div>
+    <div class="netname tb-hide-sm"><small>Network</small><strong>Eastern Header Network</strong></div>
+    <span class="demo-chip" title="All readings are synthetic, produced by the demo data engine">Demo data</span>
+    <div class="tb-sep tb-hide-sm"></div>
+    <div class="health" id="tbHealth"></div>
+    <div class="tb-right">
+      <div class="sim" id="simControls"></div>
+      <div class="tb-sep tb-hide-md"></div>
+      <div class="clock tb-hide-md" id="clock"></div>
+      <button class="iconbtn" id="settingsBtn" aria-label="Settings"></button>
+      <div class="avatar" title="Operator · Control room B">OP</div>
+    </div>
+  </header>
+
+  <main class="views">
+    <!-- OVERVIEW -->
+    <section class="view" id="view-overview" data-view="overview">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">Control room · Overview</div>
+          <h1>Network status</h1>
+        </div>
+        <p class="scroll-note" id="ovStamp"></p>
+      </div>
+      <section class="hsum" aria-labelledby="hbTitle">
+        <div class="hb-head">
+          <div class="eyebrow" id="hbTitle">Network health summary</div>
+          <div id="hbFocus" class="hb-focus"></div>
+        </div>
+        <div class="hb-items" id="hbItems"></div>
+      </section>
+      <div class="ov-main">
+        <div class="slot-viewer" data-slot="viewer"></div>
+        <div class="slot-insp" data-slot="inspector"></div>
+      </div>
+      <div class="ov-trends">
+        <div class="panel">
+          <div class="panel-h"><div><h3>Pressure · segment outlets</h3><div class="sub">bar · last 60 min · click a line to inspect its sensor</div></div></div>
+          <div class="panel-b"><div class="chart-box" style="height:190px"><canvas id="ovP"></canvas></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><div><h3>Flow · segment meters</h3><div class="sub">m³/h · last 60 min · click a line to inspect its sensor</div></div></div>
+          <div class="panel-b"><div class="chart-box" style="height:190px"><canvas id="ovF"></canvas></div></div>
+        </div>
+      </div>
+      <div class="ov-lower">
+        <div class="panel" id="ovAlerts"></div>
+        <div class="panel" id="ovLoc"></div>
+      </div>
+      <div data-slot="sensors"></div>
+    </section>
+
+    <!-- NETWORK -->
+    <section class="view" id="view-network" data-view="network" hidden>
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">Digital twin</div>
+          <h1>Pipeline network</h1>
+          <p>Click a segment or sensor to inspect it. Drag to orbit, scroll to zoom, right-drag to pan.</p>
+        </div>
+      </div>
+      <div class="net-main">
+        <div class="seg-rail" id="segRail"></div>
+        <div class="slot-viewer" data-slot="viewer"></div>
+        <div class="slot-insp" data-slot="inspector"></div>
+      </div>
+      <div data-slot="sensors"></div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section class="view" id="view-analytics" data-view="analytics" hidden>
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">Analytics</div>
+          <h1>Pressure, flow and anomaly analytics</h1>
+          <p>Demo readings at one-minute resolution. Dashed lines show the expected value for each sensor.</p>
+        </div>
+        <div class="toolbar">
+          <span class="muted" style="font-size:12px">Time range</span>
+          <div class="seg" id="rangeSeg"></div>
+        </div>
+      </div>
+      <div class="an-grid">
+        <div class="panel wide">
+          <div class="panel-h"><div><h3>Pressure trends</h3><div class="sub">bar (gauge) · select sensors to plot</div></div><div class="pickers" id="pickPressure"></div></div>
+          <div class="panel-b"><div class="chart-box tall"><canvas id="chPressure"></canvas></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><div><h3>Flow rate trends</h3><div class="sub">m³/h</div></div><div class="pickers" id="pickFlow"></div></div>
+          <div class="panel-b"><div class="chart-box"><canvas id="chFlow"></canvas></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><div><h3>Multi-sensor comparison</h3><div class="sub">Deviation from expected, in standard deviations (σ) · mixed units comparable</div></div></div>
+          <div class="panel-b" style="display:flex;flex-direction:column;gap:10px"><div class="pickers" id="pickCompare"></div><div class="chart-box" style="height:240px"><canvas id="chCompare"></canvas></div></div>
+        </div>
+        <div class="panel wide">
+          <div class="panel-h"><div><h3>Anomaly timeline</h3><div class="sub">Each mark is an alert event. Click a mark to open the alert.</div></div>
+            <div class="legend-inline"><span><i style="background:var(--warn)"></i>Warning</span><span><i style="background:var(--crit)"></i>Critical</span><span>● opened</span><span>▲ escalated</span><span>◆ localization</span></div></div>
+          <div class="panel-b"><div class="chart-box" style="height:320px"><canvas id="chTimeline"></canvas></div></div>
+        </div>
+        <div class="panel wide" id="anLoc">
+          <div class="panel-h"><div><h3>Localization evidence</h3><div class="sub">Diagnostic scores per segment. Scores rank evidence; they are not calibrated probabilities.</div></div><div id="anLocStatus"></div></div>
+          <div class="panel-b loc-layout">
+            <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+              <div class="chart-box short"><canvas id="chLoc"></canvas></div>
+              <div class="legend-inline"><span><i style="background:var(--crit)"></i>Localized</span><span><i style="background:var(--warn)"></i>Ambiguous candidate</span><span><i style="background:var(--steel)"></i>Other segment</span><span><i style="background:transparent;border-left:2px dashed var(--muted);border-radius:0;width:2px"></i>Evidence threshold 0.30</span></div>
+              <div class="eyebrow" style="margin-top:6px">Score history</div>
+              <div class="chart-box short"><canvas id="chLocHist"></canvas></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+              <div id="anLocEvidence"></div>
+              <p class="note" style="margin:0">Localized: one segment clearly leads. Ambiguous: two or more segments score within 14% of each other, so all are shown. Insufficient evidence: no segment passes the 0.30 threshold. Every estimate here comes from demo data and needs field verification.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALERTS -->
+    <section class="view" id="view-alerts" data-view="alerts" hidden>
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">Alerts &amp; investigation</div>
+          <h1>Alerts</h1>
+          <p>Alerts open when a sensor leaves its expected range or a segment is estimated as potentially affected.</p>
+        </div>
+        <div class="count-chips" id="alertCounts"></div>
+      </div>
+      <div class="al-main">
+        <div class="panel">
+          <div class="panel-h">
+            <div class="toolbar">
+              <select class="select" id="fSev" aria-label="Severity"><option value="">All severities</option><option value="critical">Critical</option><option value="warning">Warning</option></select>
+              <select class="select" id="fStatus" aria-label="Status"><option value="">All statuses</option><option>Open</option><option>Acknowledged</option><option>Resolved</option></select>
+              <select class="select" id="fSensor" aria-label="Sensor"><option value="">All sensors</option></select>
+              <select class="select" id="fSegment" aria-label="Segment"><option value="">All segments</option></select>
+              <button class="btn sm ghost" id="fClear">Clear filters</button>
+            </div>
+            <span class="sub" id="alertShown"></span>
+          </div>
+          <div class="tbl-wrap" style="max-height:calc(100vh - 230px);min-height:300px">
+            <table class="tbl" id="alertTable">
+              <thead><tr><th>Alert ID</th><th>Severity</th><th>Status</th><th>Timestamp</th><th>Sensor</th><th>Segment</th><th>Description</th></tr></thead>
+              <tbody></tbody>
+            </table>
+            <div class="empty" id="alertEmpty" hidden></div>
+          </div>
+        </div>
+        <div class="panel inv" id="invPanel">
+          <div style="padding:10px"><div class="slot-viewer" data-slot="viewer"></div></div>
+          <div id="invBody"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="popover" id="settingsPop" hidden></div>
+
+<!-- components that move between views -->
+<div hidden id="parking">
+  <div class="viewer" id="viewer">
+    <div class="viewer-canvas" id="viewerCanvas"></div>
+    <div class="viewer-labels" id="viewerLabels"></div>
+    <div class="loc-banner" id="locBanner" role="button" tabindex="0"></div>
+    <div class="viewer-tools" id="viewerTools"></div>
+    <div class="viewer-legend">
+      <span><i style="background:#8a98a4"></i>Healthy</span>
+      <span><i style="background:var(--warn)"></i>Warning</span>
+      <span><i style="background:var(--crit)"></i>Critical / estimated</span>
+      <span><i style="background:var(--sel)"></i>Selected</span>
+      <span class="note">Illustrative geometry · not to scale</span>
+    </div>
+    <div class="viewer-tip" id="viewerTip" hidden></div>
+    <div class="viewer-loading" id="viewerLoading">Initializing network view…</div>
+  </div>
+  <div class="panel inspector" id="inspector"></div>
+  <div class="panel" id="sensorPanel"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+/* ============================================================
+   DemoDataEngine — self-contained demo data source for SPS.
+   All values are synthetic. Replace this module with a real
+   backend adapter exposing the same API: getState(), start(),
+   pause(), reset(), step(), acknowledge(id), subscribe(fn).
+   ============================================================ */
+const DemoDataEngine = (() => {
+  const STEP_MIN = 1;            // one engine step = 1 minute of demo time
+  const WINDOW = 360;            // history kept in memory (steps)
+  const PRE_HISTORY = 120;       // steps generated before "now"
+
+  const SEGMENTS = [
+    { id: 'P-01', name: 'Main header',    from: 'J-0', to: 'J-1', parent: null,   lengthM: 1240, dn: 'DN400', pIn: 8.60, pOut: 8.05, q: 420 },
+    { id: 'P-02', name: 'North branch',   from: 'J-1', to: 'J-2', parent: 'P-01', lengthM: 980,  dn: 'DN300', pIn: 8.05, pOut: 7.45, q: 232 },
+    { id: 'P-03', name: 'South branch',   from: 'J-1', to: 'J-3', parent: 'P-01', lengthM: 1110, dn: 'DN300', pIn: 8.05, pOut: 7.12, q: 188 },
+    { id: 'P-04', name: 'North lateral',  from: 'J-2', to: 'J-4', parent: 'P-02', lengthM: 860,  dn: 'DN200', pIn: 7.45, pOut: 6.86, q: 151 },
+    { id: 'P-05', name: 'South lateral',  from: 'J-3', to: 'J-5', parent: 'P-03', lengthM: 900,  dn: 'DN200', pIn: 7.12, pOut: 6.51, q: 118 },
+  ];
+
+  const SENSOR_DEFS = [];
+  SEGMENTS.forEach((s, i) => {
+    const n = i + 1;
+    SENSOR_DEFS.push({ id: `PT-${n}01`, type: 'pressure', segment: s.id, t: 0.12 });
+    SENSOR_DEFS.push({ id: `FT-${n}01`, type: 'flow',     segment: s.id, t: 0.30 });
+    SENSOR_DEFS.push({ id: `PT-${n}02`, type: 'pressure', segment: s.id, t: 0.88 });
+  });
+  const SIGMA = { pressure: 0.032, flow: 2.4 };
+  const UNIT = { pressure: 'bar', flow: 'm³/h' };
+
+  // Scripted demo scenarios (step indexes; negative = before simulation start)
+  const LEAKS = [
+    { id: 'A', segment: 'P-03', t: 0.72, start: -30, ramp: 10, peak: 26, decayAt: 36, decaySteps: 16, decayTo: 0 },
+    { id: 'B', segment: 'P-05', t: 0.55, start: 14,  ramp: 14, peak: 18, decayAt: 74, decaySteps: 12, decayTo: 0 },
+    { id: 'C', segment: 'P-04', t: 0.62, start: 104, ramp: 12, peak: 22, decayAt: 170, decaySteps: 14, decayTo: 0 },
+  ];
+  const FAULTS = [ // single-sensor faults (not a leak): spike on one instrument
+    { sensor: 'FT-201', from: 56, to: 61, delta: 16 },
+    { sensor: 'PT-102', from: 132, to: 136, delta: -0.16 },
+  ];
+  const SCENARIO_LOOP = 200;
+
+  const segById = Object.fromEntries(SEGMENTS.map(s => [s.id, s]));
+  const ancestors = id => { const a = []; let p = segById[id].parent; while (p) { a.push(p); p = segById[p].parent; } return a; };
+  function relation(sensorSeg, leakSeg) {
+    if (sensorSeg === leakSeg) return 'same';
+    if (ancestors(sensorSeg).includes(leakSeg)) return 'desc';
+    if (ancestors(leakSeg).includes(sensorSeg)) return 'anc';
+    return 'other';
+  }
+
+  // Deterministic noise so Reset reproduces the same run
+  function hash(a, b) { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+  function gauss(i, k) { const u = Math.max(1e-9, hash(i + 11, k + 7919)); const v = hash(i + 101, k + 31337); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+
+  const demand = k => 1 + 0.065 * Math.sin(2 * Math.PI * k / 96) + 0.025 * Math.sin(2 * Math.PI * k / 37 + 1.3);
+
+  function expected(def, k) {
+    const s = segById[def.segment];
+    const d = demand(k);
+    if (def.type === 'flow') return s.q * d;
+    const pBase = s.pIn + (s.pOut - s.pIn) * def.t;
+    return pBase - (d - 1) * (8.75 - pBase) * 2.2;
+  }
+
+  // Effect of a leak of size L (m³/h) on one sensor
+  const KP = 0.0125;
+  function leakEffect(def, leakSeg, leakT, L) {
+    const r = relation(def.segment, leakSeg);
+    if (def.type === 'pressure') {
+      if (r === 'same') return def.t >= leakT ? -KP * L : -KP * L * (0.45 + 0.45 * def.t / Math.max(leakT, 0.05));
+      if (r === 'desc') return -KP * L * 0.78;
+      if (r === 'anc') return -KP * L * (0.12 + 0.22 * def.t);
+      return -KP * L * 0.16;
+    }
+    if (r === 'same') return def.t < leakT ? 0.72 * L : -0.22 * L;
+    if (r === 'desc') return -0.18 * L;
+    if (r === 'anc') return 0.72 * L;
+    return -0.03 * L;
+  }
+
+  function leakSize(lk, k) {
+    const kk = k >= 0 ? k % SCENARIO_LOOP : k;
+    if (kk < lk.start) return 0;
+    let v = Math.min(1, (kk - lk.start) / lk.ramp) * lk.peak;
+    if (lk.decayAt != null && kk >= lk.decayAt) {
+      const f = Math.min(1, (kk - lk.decayAt) / lk.decaySteps);
+      v = lk.peak + (lk.decayTo - lk.peak) * f;
+    }
+    return Math.max(0, v);
+  }
+
+  // Leak signatures (unit leak at segment midpoint) used for localization
+  const SIGNATURES = SEGMENTS.map(s => ({
+    segment: s.id,
+    vec: SENSOR_DEFS.map(d => leakEffect(d, s.id, 0.5, 1) / SIGMA[d.type]),
+  }));
+
+  // ---------------- state ----------------
+  let state, listeners = [], timer = null, baseTime;
+
+  function fresh() {
+    baseTime = Math.floor(Date.now() / 60000) * 60000;
+    state = {
+      step: -PRE_HISTORY - 1,
+      running: false,
+      steps: [],
+      sensors: SENSOR_DEFS.map((d, i) => ({
+        ...d, idx: i, unit: UNIT[d.type], sigma: SIGMA[d.type],
+        value: null, expected: null, dev: 0, z: 0, status: 'healthy', healthyRun: 0,
+        history: [], expHistory: [], lastUpdate: null,
+      })),
+      segments: SEGMENTS.map(s => ({ ...s, status: 'healthy' })),
+      alerts: [],
+      events: [],
+      localization: { status: 'insufficient', candidates: [], scores: {}, evidence: [], magnitude: 0, updated: null },
+      locHistory: [],
+      nextAlert: 1041,
+    };
+    for (let k = -PRE_HISTORY; k <= 0; k++) advance(k);
+  }
+
+  const timeOf = k => baseTime + k * STEP_MIN * 60000;
+
+  function advance(k) {
+    if (k <= state.step) return; // guard: never process the same step twice
+    state.step = k;
+    state.steps.push(k);
+    const t = timeOf(k);
+
+    state.sensors.forEach((s, i) => {
+      let v = expected(s, k) + gauss(i, k) * s.sigma;
+      LEAKS.forEach(lk => { const L = leakSize(lk, k); if (L > 0) v += leakEffect(s, lk.segment, lk.t, L); });
+      FAULTS.forEach(f => { const kk = k >= 0 ? k % SCENARIO_LOOP : k; if (f.sensor === s.id && kk >= f.from && kk < f.to) v += f.delta; });
+      const e = expected(s, k);
+      s.history.push(v); s.expHistory.push(e);
+      if (s.history.length > WINDOW) { s.history.shift(); s.expHistory.shift(); }
+      s.value = v; s.expected = e; s.lastUpdate = t;
+      const n = Math.min(3, s.history.length);
+      let acc = 0; for (let j = 1; j <= n; j++) acc += s.history[s.history.length - j] - s.expHistory[s.expHistory.length - j];
+      s.dev = acc / n; s.z = s.dev / s.sigma;
+      const az = Math.abs(s.z);
+      const prev = s.status;
+      if (az >= 6.5) s.status = 'critical';
+      else if (az >= 3.2) s.status = prev === 'critical' && az >= 5 ? 'critical' : 'warning';
+      else if (az < 2.4) s.status = 'healthy';
+      s.healthyRun = s.status === 'healthy' ? s.healthyRun + 1 : 0;
+      handleAlerts(s, prev, k, t);
+    });
+    if (state.steps.length > WINDOW) state.steps.shift();
+
+    state.segments.forEach(seg => {
+      const ss = state.sensors.filter(s => s.segment === seg.id);
+      seg.status = ss.some(s => s.status === 'critical') ? 'critical' : ss.some(s => s.status === 'warning') ? 'warning' : 'healthy';
+    });
+    localize(k, t);
+    const ev = state.events; while (ev.length && ev[0].step < state.steps[0]) ev.shift();
+  }
+
+  function describe(s) {
+    const dir = s.dev < 0 ? 'below' : 'above';
+    const mag = s.type === 'pressure' ? `${s.dev > 0 ? '+' : '−'}${Math.abs(s.dev).toFixed(2)} bar` : `${s.dev > 0 ? '+' : '−'}${Math.abs(s.dev).toFixed(1)} m³/h`;
+    return `${s.type === 'pressure' ? 'Pressure' : 'Flow'} ${dir} expected range (${mag})`;
+  }
+
+  function handleAlerts(s, prev, k, t) {
+    const open = state.alerts.find(a => a.sensor === s.id && a.kind === 'sensor' && a.status !== 'Resolved');
+    if (s.status !== 'healthy') {
+      if (!open) {
+        const a = { id: `ALR-${state.nextAlert++}`, kind: 'sensor', severity: s.status, status: 'Open', step: k, time: t,
+          sensor: s.id, segment: s.segment, description: describe(s), peakZ: Math.abs(s.z) };
+        state.alerts.unshift(a);
+        state.events.push({ step: k, time: t, sensor: s.id, segment: s.segment, severity: s.status, alert: a.id, kind: 'opened' });
+      } else {
+        if (s.status === 'critical' && open.severity !== 'critical') {
+          open.severity = 'critical';
+          state.events.push({ step: k, time: t, sensor: s.id, segment: s.segment, severity: 'critical', alert: open.id, kind: 'escalated' });
+        }
+        if (Math.abs(s.z) > open.peakZ) { open.peakZ = Math.abs(s.z); open.description = describe(s); }
+      }
+    } else if (open && s.healthyRun >= 5) {
+      open.status = 'Resolved'; open.resolvedTime = t;
+    }
+  }
+
+  function localize(k, t) {
+    const o = state.sensors.map(s => s.z);
+    const mag = Math.sqrt(o.reduce((a, b) => a + b * b, 0));
+    const strength = Math.max(0, Math.min(1, (mag - 5) / 9));
+    const scores = {};
+    SIGNATURES.forEach(sig => {
+      let dot = 0, n2 = 0;
+      sig.vec.forEach((v, i) => { dot += v * o[i]; n2 += v * v; });
+      const cos = mag > 0 ? dot / (Math.sqrt(n2) * mag) : 0;
+      scores[sig.segment] = Math.max(0, cos) ** 3 * strength;
+    });
+    const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+    const [top, second] = ranked;
+    let status, candidates;
+    if (top[1] < 0.3) { status = 'insufficient'; candidates = []; }
+    else if (second[1] >= top[1] * 0.86) { status = 'ambiguous'; candidates = ranked.filter(r => r[1] >= top[1] * 0.86).map(r => r[0]); }
+    else { status = 'localized'; candidates = [top[0]]; }
+
+    const L = state.localization;
+    // hysteresis: a new classification must persist 3 steps before it replaces the current one
+    const key = status + ':' + candidates.join();
+    const curKey = L.status + ':' + L.candidates.join();
+    if (key !== curKey) {
+      if (state.pendingKey === key) state.pendingCount++; else { state.pendingKey = key; state.pendingCount = 1; }
+      if (state.pendingCount < 3 && L.updated) { status = L.status; candidates = L.candidates; }
+    } else { state.pendingKey = null; state.pendingCount = 0; }
+    const changed = status !== L.status || candidates.join() !== L.candidates.join();
+    const evidence = buildEvidence(candidates, scores);
+    state.localization = { status, candidates, scores, evidence, magnitude: mag, updated: t, step: k, since: changed ? t : L.since };
+    state.locHistory.push({ step: k, ...scores });
+    if (state.locHistory.length > WINDOW) state.locHistory.shift();
+
+    if (changed && status !== 'insufficient') {
+      const lead = evidence.find(e => e.sensor);
+      const a = { id: `ALR-${state.nextAlert++}`, kind: 'localization', severity: status === 'localized' ? 'critical' : 'warning',
+        status: 'Open', step: k, time: t, sensor: lead ? lead.sensor : '—', segment: candidates.join(' / '),
+        description: status === 'localized' ? `Potentially affected segment estimated: ${candidates[0]}` : `Ambiguous localization between ${candidates.join(' and ')}` , peakZ: 0 };
+      state.alerts.filter(x => x.kind === 'localization' && x.status !== 'Resolved').forEach(x => { x.status = 'Resolved'; x.resolvedTime = t; });
+      state.alerts.unshift(a);
+      state.events.push({ step: k, time: t, sensor: a.sensor, segment: candidates[0], severity: a.severity, alert: a.id, kind: 'localization' });
+    }
+    if (changed && status === 'insufficient') {
+      state.alerts.filter(x => x.kind === 'localization' && x.status !== 'Resolved').forEach(x => { x.status = 'Resolved'; x.resolvedTime = t; });
+    }
+  }
+
+  function buildEvidence(candidates, scores) {
+    if (!candidates.length) return [];
+    const out = [];
+    const seg = candidates[0];
+    const sig = SIGNATURES.find(s => s.segment === seg).vec;
+    const contrib = state.sensors.map((s, i) => ({ s, c: sig[i] * s.z })).filter(x => x.c > 0).sort((a, b) => b.c - a.c);
+    const p = contrib.filter(x => x.s.type === 'pressure').slice(0, 2);
+    const f = contrib.filter(x => x.s.type === 'flow').slice(0, 1);
+    p.forEach(({ s }) => out.push({ kind: 'pressure', sensor: s.id, segment: s.segment,
+      text: `Pressure drop at ${s.id}`, detail: `${s.dev.toFixed(2)} bar vs expected · ${Math.abs(s.z).toFixed(1)}σ` }));
+    f.forEach(({ s }) => out.push({ kind: 'flow', sensor: s.id, segment: s.segment,
+      text: `Abnormal flow at ${s.id}`, detail: `${s.dev > 0 ? '+' : ''}${s.dev.toFixed(1)} m³/h vs expected · ${Math.abs(s.z).toFixed(1)}σ` }));
+    out.push({ kind: 'relation', sensor: null, segment: seg,
+      text: 'Sensor relationship evidence', detail: `Deviation pattern matches the ${seg} signature (score ${scores[seg].toFixed(2)})` });
+    return out;
+  }
+
+  function emit() { listeners.forEach(fn => fn(state)); }
+
+  const api = {
+    SEGMENTS, timeOf,
+    getState: () => state,
+    subscribe(fn) { listeners.push(fn); return () => { listeners = listeners.filter(x => x !== fn); }; },
+    step() { advance(state.step + 1); emit(); },
+    start(intervalMs = 1600) {
+      if (timer) return;
+      state.running = true;
+      timer = setInterval(() => api.step(), intervalMs);
+      emit();
+    },
+    pause() { clearInterval(timer); timer = null; state.running = false; emit(); },
+    reset() { clearInterval(timer); timer = null; fresh(); emit(); },
+    acknowledge(id) { const a = state.alerts.find(x => x.id === id); if (a && a.status === 'Open') { a.status = 'Acknowledged'; emit(); } },
+    sensorSeries(id, n) { const s = state.sensors.find(x => x.id === id); const m = Math.min(n, s.history.length); return { values: s.history.slice(-m), expected: s.expHistory.slice(-m), steps: state.steps.slice(-m) }; },
+  };
+  fresh();
+  return api;
+})();
+
+
+</script>
+<script>
+/* ============================================================
+   SPS UI — components read from DemoDataEngine via its public
+   API only (getState / subscribe / start / pause / reset / step /
+   acknowledge / sensorSeries).
+   ============================================================ */
+(() => {
+'use strict';
+const E = DemoDataEngine;
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const REDUCED = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const C = {
+  text: '#e1e7e4', text2: '#b3beba', muted: '#86948f', dim: '#64716d', line: '#242d2b', line2: '#313c39', grid: 'rgba(134,148,143,.10)',
+  steel: '#6f94ba', steel2: '#98b7d6', ok: '#3fb67f', warn: '#e3a23b', crit: '#e8574e', sel: '#88b9ff', panel: '#151b1a',
+};
+const SERIES = ['#7fa7d9', '#5cc2b4', '#d7b87a', '#b9a2e0', '#e2e6e9', '#de8fb3', '#8fb4c9'];
+const STATUS_COLOR = { healthy: C.ok, warning: C.warn, critical: C.crit };
+const F = { body: 'Barlow, system-ui, sans-serif', mono: '"IBM Plex Mono", ui-monospace, monospace' };
+
+const ICON = {
+  overview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="4.5" rx="1.5"/><rect x="13.5" y="10.5" width="7.5" height="10.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>',
+  network: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 12h6m0 0V5h6m-6 7v7h6m0-14h6m-6 14h6"/><circle cx="9" cy="12" r="1.8" fill="currentColor"/></svg>',
+  analytics: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M4 15l4.5-5 4 3.5L20 5"/><circle cx="20" cy="5" r="1.4" fill="currentColor"/></svg>',
+  alerts: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.5 2.8 19.5h18.4L12 3.5Z"/><path d="M12 10v4.2" stroke-linecap="round"/><circle cx="12" cy="16.8" r=".9" fill="currentColor"/></svg>',
+  play: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.8v10.4c0 .6.6.9 1.1.6l8.1-5.2c.4-.3.4-.9 0-1.2L5.1 2.2c-.5-.3-1.1 0-1.1.6Z"/></svg>',
+  pause: '<svg viewBox="0 0 16 16" fill="currentColor"><rect x="3.5" y="2.5" width="3" height="11" rx="1"/><rect x="9.5" y="2.5" width="3" height="11" rx="1"/></svg>',
+  reset: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.8 8a5.2 5.2 0 1 0 1.6-3.8"/><path d="M2.5 2.5v3h3"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/><circle cx="12" cy="12" r="2.5"/></svg>',
+  tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 12V4h8l9 9-8 8-9-9Z"/><circle cx="7.5" cy="8.5" r="1.3" fill="currentColor"/></svg>',
+  flow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 8h13m-3-3 3 3-3 3M21 16H8m3-3-3 3 3 3"/></svg>',
+  orbit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9" ry="4"/><path d="M18 8.6 21 8l-.4 3"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>',
+  drop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 4v13m-5-5 5 5 5-5"/></svg>',
+  wave: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3 12c2.5-5 4.5-5 6 0s3.5 5 6 0 3.5-5 6 0"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6m-7.6 6 7.6 3.6"/></svg>',
+  cursor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M5 3.5 19 11l-6.2 1.6L9.5 19 5 3.5Z"/></svg>',
+  filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5L4 5Z"/></svg>',
+};
+
+/* ---------- formatting ---------- */
+const pad = n => String(n).padStart(2, '0');
+const hhmm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const stamp = t => { const d = new Date(t); return `${d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' })} ${hhmm(t)}`; };
+const fmtV = (s, v = s.value) => s.type === 'pressure' ? v.toFixed(2) : v.toFixed(1);
+const fmtDev = s => (s.dev >= 0 ? '+' : '−') + (s.type === 'pressure' ? Math.abs(s.dev).toFixed(2) : Math.abs(s.dev).toFixed(1));
+const cap = s => s[0].toUpperCase() + s.slice(1);
+const statusLabel = s => ({ healthy: 'Healthy', warning: 'Warning', critical: 'Critical' }[s]);
+const locLabel = s => ({ localized: 'Localized', ambiguous: 'Ambiguous', insufficient: 'Insufficient evidence' }[s]);
+const statusChip = s => `<span class="chip ${s}">${statusLabel(s)}</span>`;
+const alertStatusChip = s => `<span class="chip ${s === 'Open' ? 'open' : s === 'Acknowledged' ? 'ack' : 'resolved'}">${s}</span>`;
+const sevChip = s => `<span class="chip ${s}">${cap(s)}</span>`;
+const sensorById = id => E.getState().sensors.find(s => s.id === id);
+const segById = id => E.getState().segments.find(s => s.id === id);
+const sensorColor = (() => { const ids = E.getState().sensors.map(s => s.id); return id => SERIES[ids.indexOf(id) % SERIES.length]; })();
+
+function networkHealth(st) {
+  let h = 100;
+  st.sensors.forEach(s => { if (s.status === 'warning') h -= 2.5; if (s.status === 'critical') h -= 5.5; });
+  if (st.localization.status === 'localized') h -= 6; else if (st.localization.status === 'ambiguous') h -= 4;
+  h = Math.max(0, Math.round(h));
+  return { value: h, status: h >= 90 ? 'healthy' : h >= 70 ? 'warning' : 'critical', label: h >= 90 ? 'Normal' : h >= 70 ? 'Degraded' : 'Critical' };
+}
+
+/* ---------- app store (UI state only) ---------- */
+const Store = {
+  route: 'overview', selection: null, alertId: null, range: 60, focus: null,
+  pickPressure: ['PT-301', 'PT-302', 'PT-501', 'PT-102'],
+  pickFlow: ['FT-101', 'FT-301', 'FT-501'],
+  pickCompare: ['PT-302', 'FT-301', 'PT-502', 'FT-201'],
+  speed: 1600, labels: true, flow: true,
+  listeners: [],
+  set(patch) { Object.assign(this, patch); this.listeners.forEach(f => f(patch)); },
+  on(f) { this.listeners.push(f); },
+};
+function select(sel, { focus = true } = {}) {
+  Store.set({ selection: sel });
+  if (focus && sel) Pipeline3DViewer.focus(sel);
+}
+function go(route) { if (location.hash !== '#' + route) location.hash = route; else applyRoute(); }
+
+/* ============================================================
+   Pipeline3DViewer
+   ============================================================ */
+const Pipeline3DViewer = (() => {
+  const NODES = {
+    'J-0': { p: [-16, 0, 0], label: 'J-0', note: 'Pump station' },
+    'J-1': { p: [-5, 0, 0], label: 'J-1', note: 'Tee' },
+    'J-2': { p: [3, 0, -6], label: 'J-2', note: 'Offtake' },
+    'J-3': { p: [3, 1.5, 6], label: 'J-3', note: 'Offtake' },
+    'J-4': { p: [14, 0, -10], label: 'J-4', note: 'Delivery' },
+    'J-5': { p: [14, 1.5, 9], label: 'J-5', note: 'Delivery' },
+  };
+  const PATHS = {
+    'P-01': [[-16, 0, 0], [-5, 0, 0]],
+    'P-02': [[-5, 0, 0], [-5, 0, -6], [3, 0, -6]],
+    'P-03': [[-5, 0, 0], [-5, 0, 6], [-1, 0, 6], [-1, 1.5, 6], [3, 1.5, 6]],
+    'P-04': [[3, 0, -6], [9, 0, -6], [9, 0, -10], [14, 0, -10]],
+    'P-05': [[3, 1.5, 6], [9, 1.5, 6], [9, 1.5, 9], [14, 1.5, 9]],
+  };
+  const RADIUS = { 'DN400': 0.42, 'DN300': 0.34, 'DN200': 0.27 };
+  const GROUND = -1.4;
+  const HOME = { pos: [15, 21, 27], target: [-0.5, 0, -0.5] };
+  const STEEL = new THREE.Color('#7b8994');
+
+  let renderer, scene, camera, controls, wrap, labelsEl, tipEl, ready = false;
+  const segs = {}, sensors = {}, hitTargets = [];
+  let hover = null, highlight = { segments: [], sensor: null }, locSegs = [], locStatus = 'insufficient', focusF = null;
+  let tween = null, autoRotate = false, onPick = () => {}, clock;
+  let dotTex;
+
+  function buildCurve(pts) {
+    const P = pts.map(p => new THREE.Vector3(...p));
+    const out = [P[0].clone()];
+    const line = to => { const from = out[out.length - 1].clone(); const n = Math.max(1, Math.ceil(from.distanceTo(to) / 0.6)); for (let j = 1; j <= n; j++) out.push(from.clone().lerp(to, j / n)); };
+    for (let i = 1; i < P.length - 1; i++) {
+      const a = P[i - 1], b = P[i], c = P[i + 1];
+      const r = Math.min(0.9, a.distanceTo(b) / 2.4, b.distanceTo(c) / 2.4);
+      const p1 = b.clone().add(a.clone().sub(b).normalize().multiplyScalar(r));
+      const p2 = b.clone().add(c.clone().sub(b).normalize().multiplyScalar(r));
+      line(p1);
+      for (let j = 1; j <= 8; j++) { const t = j / 8, u = 1 - t; out.push(new THREE.Vector3().addScaledVector(p1, u * u).addScaledVector(b, 2 * u * t).addScaledVector(p2, t * t)); }
+    }
+    line(P[P.length - 1]);
+    return new THREE.CatmullRomCurve3(out, false, 'centripetal');
+  }
+
+  function makeDotTexture() {
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
+
+  function init(container, opts) {
+    wrap = container; onPick = opts.onPick;
+    labelsEl = $('#viewerLabels'); tipEl = $('#viewerTip');
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.86;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    $('#viewerCanvas').appendChild(renderer.domElement);
+
+    scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x0f1413, 48, 95);
+    camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
+    camera.position.set(...HOME.pos);
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(...HOME.target);
+    controls.enableDamping = true; controls.dampingFactor = 0.08;
+    controls.minDistance = 8; controls.maxDistance = 70; controls.maxPolarAngle = Math.PI * 0.47;
+    controls.autoRotateSpeed = 0.6;
+    controls.addEventListener('start', () => { tween = null; });
+
+    scene.add(new THREE.HemisphereLight(0xc4d6e6, 0x101614, 0.42));
+    const sun = new THREE.DirectionalLight(0xfff6ea, 1.05);
+    sun.position.set(12, 26, 14); sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 24, bottom: -24, near: 1, far: 80 });
+    sun.shadow.bias = -0.0006;
+    scene.add(sun);
+    const rim = new THREE.DirectionalLight(0x88a8c8, 0.35); rim.position.set(-20, 10, -18); scene.add(rim);
+
+    // ground
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(140, 110), new THREE.MeshStandardMaterial({ color: 0x0a0e0d, roughness: 1, metalness: 0 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = GROUND; ground.receiveShadow = true; scene.add(ground);
+    const grid = new THREE.GridHelper(80, 40, 0x1f2826, 0x161d1b); grid.position.y = GROUND + 0.01;
+    grid.material.transparent = true; grid.material.opacity = 0.7; scene.add(grid);
+    // corridor strip (right-of-way) under the network
+    const rowMat = new THREE.MeshStandardMaterial({ color: 0x111816, roughness: 1 });
+    dotTex = makeDotTexture();
+
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x5d6b73, metalness: 0.5, roughness: 0.5 });
+    const concrete = new THREE.MeshStandardMaterial({ color: 0x1c2422, roughness: 0.95 });
+    const flangeMat = new THREE.MeshStandardMaterial({ color: 0x6c7a84, metalness: 0.55, roughness: 0.38 });
+    const supportGeo = new THREE.BoxGeometry(1, 1, 1);
+    const supports = [];
+
+    E.SEGMENTS.forEach(def => {
+      const curve = buildCurve(PATHS[def.id]);
+      const R = RADIUS[def.dn];
+      const len = curve.getLength();
+      const mat = new THREE.MeshStandardMaterial({ color: STEEL.clone(), metalness: 0.42, roughness: 0.4, emissive: new THREE.Color(0x000000) });
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.ceil(len * 7), R, 20, false), mat);
+      tube.castShadow = true; tube.receiveShadow = true;
+      scene.add(tube);
+      const halo = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.ceil(len * 4), R * 1.55, 16, false),
+        new THREE.MeshBasicMaterial({ color: C.sel, transparent: true, opacity: 0, side: THREE.BackSide, depthWrite: false }));
+      scene.add(halo);
+      const alarm = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.ceil(len * 4), R * 2.1, 16, false),
+        new THREE.MeshBasicMaterial({ color: C.crit, transparent: true, opacity: 0, depthWrite: false }));
+      scene.add(alarm);
+      const hit = new THREE.Mesh(new THREE.TubeGeometry(curve, Math.ceil(len * 2), R * 1.9, 8, false),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      hit.userData = { kind: 'segment', id: def.id }; scene.add(hit); hitTargets.push(hit);
+
+      // flanges + supports
+      const nF = Math.floor(len / 3.2);
+      for (let i = 1; i < nF; i++) {
+        const u = i / nF; const p = curve.getPointAt(u); const tan = curve.getTangentAt(u);
+        const fl = new THREE.Mesh(new THREE.TorusGeometry(R * 1.04, R * 0.16, 8, 28), flangeMat);
+        fl.position.copy(p); fl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tan); fl.castShadow = true; scene.add(fl);
+      }
+      const nS = Math.floor(len / 2.4);
+      for (let i = 1; i < nS; i++) {
+        const u = i / nS; const p = curve.getPointAt(u); const tan = curve.getTangentAt(u);
+        if (Math.abs(tan.y) > 0.25) continue;
+        supports.push({ x: p.x, z: p.z, top: p.y - R, R });
+      }
+      // right-of-way strip
+      for (let i = 0; i < PATHS[def.id].length - 1; i++) {
+        const a = PATHS[def.id][i], b = PATHS[def.id][i + 1];
+        const dx = b[0] - a[0], dz = b[2] - a[2]; const L = Math.hypot(dx, dz); if (L < 0.1) continue;
+        const strip = new THREE.Mesh(new THREE.PlaneGeometry(L + 2.2, 2.2), rowMat);
+        strip.rotation.x = -Math.PI / 2; strip.rotation.z = -Math.atan2(dz, dx);
+        strip.position.set((a[0] + b[0]) / 2, GROUND + 0.005, (a[2] + b[2]) / 2); strip.receiveShadow = true; scene.add(strip);
+      }
+      // direction chevron
+      const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.42, 14), new THREE.MeshStandardMaterial({ color: 0x9fbbd6, roughness: 0.4, metalness: 0.2, emissive: 0x1d2c3a }));
+      const ap = curve.getPointAt(0.5), at = curve.getTangentAt(0.5);
+      arrow.position.copy(ap).add(new THREE.Vector3(0, R + 0.28, 0)); arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), at);
+      scene.add(arrow);
+
+      // flow particles on the pipe crown
+      const n = Math.round(len * 1.7);
+      const geo = new THREE.BufferGeometry(); const pos = new Float32Array(n * 3);
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xbfe0ff, size: 0.2, map: dotTex, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+      scene.add(pts);
+      const offsets = Array.from({ length: n }, (_, i) => (i + Math.random() * 0.5) / n);
+
+      const lbl = document.createElement('div'); lbl.className = 'v-lbl';
+      lbl.innerHTML = `<span class="v-seg" data-seg="${def.id}"><i></i>${def.id}</span>`;
+      lbl.firstChild.addEventListener('click', e => { e.stopPropagation(); onPick({ type: 'segment', id: def.id }); });
+      labelsEl.appendChild(lbl);
+      segs[def.id] = { def, curve, R, len, tube, mat, halo, alarm, pts, offsets, phase: 0, lbl, labelPos: curve.getPointAt(0.5).add(new THREE.Vector3(0, R + 1.05, 0)), status: 'healthy', flowRatio: 1 };
+    });
+
+    // supports (instanced)
+    const postMesh = new THREE.InstancedMesh(supportGeo, steelMat, supports.length);
+    const saddleMesh = new THREE.InstancedMesh(supportGeo, concrete, supports.length);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+    supports.forEach((s, i) => {
+      const h = s.top - GROUND;
+      m.compose(new THREE.Vector3(s.x, GROUND + h / 2, s.z), q, new THREE.Vector3(0.12, h, 0.12)); postMesh.setMatrixAt(i, m);
+      m.compose(new THREE.Vector3(s.x, GROUND + 0.06, s.z), q, new THREE.Vector3(0.7, 0.12, 0.7)); saddleMesh.setMatrixAt(i, m);
+    });
+    postMesh.castShadow = true; saddleMesh.receiveShadow = true;
+    scene.add(postMesh, saddleMesh);
+
+    // nodes
+    const nodeMat = new THREE.MeshStandardMaterial({ color: 0x7d8b95, metalness: 0.5, roughness: 0.35 });
+    Object.entries(NODES).forEach(([id, n]) => {
+      const p = new THREE.Vector3(...n.p);
+      const g = new THREE.Group(); g.position.copy(p);
+      if (id === 'J-0') {
+        const bld = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.6, 3.4), new THREE.MeshStandardMaterial({ color: 0x2d3836, roughness: 0.8 }));
+        bld.position.set(-2.4, GROUND - p.y + 1.3, 0); bld.castShadow = true; bld.receiveShadow = true; g.add(bld);
+        const roof = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.16, 3.7), new THREE.MeshStandardMaterial({ color: 0x3b4845, roughness: 0.7 }));
+        roof.position.set(-2.4, GROUND - p.y + 2.68, 0); roof.castShadow = true; g.add(roof);
+        [-1, 1].forEach(z => { const pump = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.1, 24), nodeMat); pump.rotation.z = Math.PI / 2; pump.position.set(-0.5, 0, z * 0.9); pump.castShadow = true; g.add(pump); });
+        const hdr = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 2.6, 24), nodeMat); hdr.rotation.x = Math.PI / 2; hdr.position.set(0.15, 0, 0); g.add(hdr);
+      } else if (id === 'J-4' || id === 'J-5') {
+        const tank = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 2.4 + p.y, 36), new THREE.MeshStandardMaterial({ color: 0x55636b, metalness: 0.35, roughness: 0.5 }));
+        tank.position.set(1.6, GROUND - p.y + (2.4 + p.y) / 2, 0); tank.castShadow = true; tank.receiveShadow = true; g.add(tank);
+        const capm = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.1, 36), nodeMat); capm.position.set(1.6, GROUND - p.y + 2.45 + p.y, 0); g.add(capm);
+        const v = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.5), nodeMat); v.position.set(0.05, 0.2, 0); v.castShadow = true; g.add(v);
+      } else {
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.15, 28), nodeMat); body.castShadow = true; g.add(body);
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.12, 28), flangeMat); cap.position.y = 0.6; g.add(cap);
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.04, 8, 24), flangeMat); wheel.rotation.x = Math.PI / 2; wheel.position.y = 1.0; g.add(wheel);
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 8), flangeMat); stem.position.y = 0.8; g.add(stem);
+      }
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.16, 2.2), concrete);
+      pad.position.set(0, GROUND - p.y + 0.08, 0); pad.receiveShadow = true; g.add(pad);
+      if (p.y > 0.1) { const col = new THREE.Mesh(new THREE.BoxGeometry(0.3, p.y - GROUND - 0.4, 0.3), steelMat); col.position.y = (GROUND - p.y) / 2 - 0.2; g.add(col); }
+      scene.add(g);
+      const lbl = document.createElement('div'); lbl.className = 'v-lbl';
+      lbl.innerHTML = `<span class="v-node">${n.label}<em>${n.note}</em></span>`;
+      labelsEl.appendChild(lbl);
+      NODES[id].lbl = lbl; NODES[id].lp = p.clone().add(new THREE.Vector3(0, id === 'J-4' || id === 'J-5' ? 1.3 + 2.4 - p.y : 1.5, 0));
+      if (id === 'J-0') NODES[id].lp = p.clone().add(new THREE.Vector3(-2.4, 2.1 - p.y + GROUND + 1.4, 0));
+    });
+
+    // sensors
+    const st = E.getState();
+    st.sensors.forEach(s => {
+      const sg = segs[s.segment];
+      const p = sg.curve.getPointAt(s.t);
+      const g = new THREE.Group(); g.position.copy(p);
+      const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(C.ok), emissive: new THREE.Color(C.ok), emissiveIntensity: 0.22, roughness: 0.5, metalness: 0.05, transparent: true });
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.85, 8), flangeMat); stem.position.y = sg.R + 0.42; g.add(stem);
+      const boss = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.14, 12), flangeMat); boss.position.y = sg.R + 0.04; g.add(boss);
+      const head = s.type === 'pressure'
+        ? new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.12, 28), mat)
+        : new THREE.Mesh(new THREE.OctahedronGeometry(0.27), mat);
+      if (s.type === 'pressure') head.rotation.x = Math.PI / 2;
+      head.position.y = sg.R + 0.95; head.castShadow = true; g.add(head);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.035, 8, 40), new THREE.MeshBasicMaterial({ color: C.sel, transparent: true, opacity: 0 }));
+      ring.rotation.x = Math.PI / 2; ring.position.y = sg.R + 0.95; g.add(ring);
+      const hit = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 10), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+      hit.position.y = sg.R + 0.9; hit.userData = { kind: 'sensor', id: s.id }; g.add(hit); hitTargets.push(hit);
+      scene.add(g);
+      const lbl = document.createElement('div'); lbl.className = 'v-lbl'; lbl.hidden = true;
+      lbl.innerHTML = `<span class="v-sensor">${s.id}</span>`; labelsEl.appendChild(lbl);
+      sensors[s.id] = { s, g, head, mat, ring, lbl, lp: p.clone().add(new THREE.Vector3(0, sg.R + 1.55, 0)), status: 'healthy', world: p.clone().add(new THREE.Vector3(0, sg.R + 0.9, 0)) };
+    });
+
+    // interaction
+    const ray = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+    let down = null;
+    const pickAt = e => {
+      const r = renderer.domElement.getBoundingClientRect();
+      mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(mouse, camera);
+      const hits = ray.intersectObjects(hitTargets, false);
+      if (!hits.length) return null;
+      const sensorHit = hits.find(h => h.object.userData.kind === 'sensor' && h.distance < hits[0].distance + 1.2);
+      return (sensorHit || hits[0]).object.userData;
+    };
+    renderer.domElement.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
+    renderer.domElement.addEventListener('pointerup', e => {
+      if (!down) return; const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y); down = null;
+      if (moved > 5 || e.button !== 0) return;
+      const u = pickAt(e); onPick(u ? { type: u.kind, id: u.id } : null);
+    });
+    renderer.domElement.addEventListener('pointermove', e => {
+      if (e.buttons) { setHover(null); return; }
+      const u = pickAt(e); setHover(u, e);
+    });
+    renderer.domElement.addEventListener('pointerleave', () => setHover(null));
+
+    new ResizeObserver(resize).observe(wrap);
+    resize();
+    clock = new THREE.Clock();
+    ready = true;
+    renderer.setAnimationLoop(frame);
+    setTimeout(() => $('#viewerLoading').classList.add('done'), 120);
+  }
+
+  function setHover(u, e) {
+    const key = u ? u.kind + u.id : null;
+    if ((hover && hover.key) === key && !u) return;
+    hover = u ? { ...u, key } : null;
+    renderer.domElement.style.cursor = u ? 'pointer' : 'grab';
+    if (!u) { tipEl.hidden = true; return; }
+    const r = wrap.getBoundingClientRect();
+    let html;
+    if (u.kind === 'sensor') {
+      const s = sensorById(u.id);
+      html = `<div class="t"><span>${s.id}</span><span class="dot ${s.status}"></span></div><div class="m">${cap(s.type)} · ${s.segment}</div><div class="mono" style="margin-top:4px">${fmtV(s)} ${s.unit} <span class="muted">(${fmtDev(s)})</span></div>`;
+    } else {
+      const sg = segById(u.id); const ft = sensorById(`FT-${u.id.slice(-1)}01`);
+      html = `<div class="t"><span>${sg.id}</span><span class="dot ${sg.status}"></span></div><div class="m">${sg.name} · ${sg.dn} · ${statusLabel(sg.status)}</div><div class="mono" style="margin-top:4px">${fmtV(ft)} m³/h</div>`;
+    }
+    tipEl.innerHTML = html; tipEl.hidden = false;
+    const x = Math.min(e.clientX - r.left + 14, r.width - 190), y = Math.min(e.clientY - r.top + 14, r.height - 90);
+    tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px';
+  }
+
+  function resize() {
+    if (!renderer || !wrap) return;
+    const w = wrap.clientWidth, h = wrap.clientHeight; if (!w || !h) return;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+
+  const tmpV = new THREE.Vector3();
+  function project(v, el) {
+    tmpV.copy(v).project(camera);
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    if (tmpV.z > 1 || tmpV.x < -1.1 || tmpV.x > 1.1 || tmpV.y < -1.1 || tmpV.y > 1.1) { el.style.visibility = 'hidden'; return; }
+    el.style.visibility = 'visible';
+    el.style.transform = `translate(${((tmpV.x + 1) / 2 * w).toFixed(1)}px, ${((1 - tmpV.y) / 2 * h).toFixed(1)}px) translate(-50%,-100%)`;
+  }
+
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function frame() {
+    if (!wrap || !wrap.isConnected || !wrap.clientWidth) return;
+    const dt = Math.min(0.05, clock.getDelta()); const time = clock.elapsedTime;
+    if (tween) {
+      tween.t = Math.min(1, tween.t + dt / tween.dur); const k = ease(tween.t);
+      camera.position.lerpVectors(tween.p0, tween.p1, k); controls.target.lerpVectors(tween.t0, tween.t1, k);
+      if (tween.t >= 1) tween = null;
+    }
+    controls.autoRotate = autoRotate && !REDUCED;
+    controls.update();
+    const pulse = REDUCED ? 0.5 : 0.5 + 0.5 * Math.sin(time * 3.2);
+
+    Object.values(segs).forEach(sg => {
+      const id = sg.def.id;
+      const isSel = highlight.segments.includes(id);
+      const isHover = hover && hover.kind === 'segment' && hover.id === id;
+      const isLoc = locSegs.includes(id);
+      const base = STEEL.clone();
+      if (sg.status === 'warning') base.lerp(new THREE.Color(C.warn), 0.28);
+      if (sg.status === 'critical') base.lerp(new THREE.Color(C.warn), 0.34);
+      if (isLoc) base.copy(new THREE.Color(locStatus === 'localized' ? '#c8463e' : '#c98a2c'));
+      sg.mat.color.copy(base);
+      const em = new THREE.Color(0x000000);
+      if (isLoc) em.set(locStatus === 'localized' ? C.crit : C.warn).multiplyScalar(0.12 + 0.3 * pulse);
+      if (isHover) em.add(new THREE.Color(0x1c2a3a));
+      if (isSel) em.add(new THREE.Color(0x14243a));
+      sg.mat.emissive.copy(em);
+      const dimSeg = !!(focusF && focusF.segments && !focusF.segments.has(id) && !isSel);
+      if (sg.mat.transparent !== dimSeg) { sg.mat.transparent = dimSeg; sg.mat.depthWrite = !dimSeg; sg.mat.needsUpdate = true; }
+      sg.mat.opacity += ((dimSeg ? 0.22 : 1) - sg.mat.opacity) * 0.15;
+      sg.halo.material.opacity += ((isSel ? 0.28 : isHover ? 0.1 : 0) - sg.halo.material.opacity) * 0.2;
+      sg.alarm.material.color.set(locStatus === 'localized' ? C.crit : C.warn);
+      sg.alarm.material.opacity = isLoc ? 0.05 + 0.12 * pulse : 0;
+      // particles
+      sg.pts.visible = Store.flow && !dimSeg;
+      if (Store.flow) {
+        if (!REDUCED) sg.phase += dt * 2.0 * sg.flowRatio / sg.len;
+        const arr = sg.pts.geometry.attributes.position.array;
+        for (let i = 0; i < sg.offsets.length; i++) {
+          const u = (sg.offsets[i] + sg.phase) % 1;
+          const p = sg.curve.getPointAt(u);
+          arr[i * 3] = p.x; arr[i * 3 + 1] = p.y + sg.R * 0.92; arr[i * 3 + 2] = p.z;
+        }
+        sg.pts.geometry.attributes.position.needsUpdate = true;
+        sg.pts.material.color.set(isLoc ? (locStatus === 'localized' ? '#ffb3ad' : '#ffd99a') : '#bfe0ff');
+      }
+      sg.lbl.hidden = !Store.labels && !isSel && !isLoc;
+      if (!sg.lbl.hidden) project(sg.labelPos, sg.lbl);
+    });
+    Object.values(NODES).forEach(n => { n.lbl.hidden = !Store.labels; if (Store.labels) project(n.lp, n.lbl); });
+    Object.values(sensors).forEach(o => {
+      const isSel = highlight.sensor === o.s.id;
+      const isHover = hover && hover.kind === 'sensor' && hover.id === o.s.id;
+      const inFocus = !!(focusF && focusF.sensors.has(o.s.id));
+      const dimS = !!(focusF && !inFocus && !isSel);
+      o.ring.material.color.set(isSel || isHover || !inFocus ? C.sel : STATUS_COLOR[o.status]);
+      const target = isSel ? 0.95 : isHover ? 0.55 : inFocus ? 0.55 + 0.35 * pulse : 0;
+      o.mat.opacity += ((dimS ? 0.18 : 1) - o.mat.opacity) * 0.2;
+      o.ring.material.opacity += (target - o.ring.material.opacity) * 0.25;
+      const sc = isSel ? 1 + 0.08 * Math.sin(time * 4) : 1;
+      o.ring.scale.setScalar(sc);
+      if (!REDUCED) o.head.rotation.y += o.s.type === 'flow' ? dt * 0.8 : 0;
+      const crit = o.status === 'critical';
+      o.mat.emissiveIntensity = crit ? 0.25 + 0.6 * pulse : 0.22;
+      o.head.scale.setScalar(dimS ? 0.7 : crit ? 1 + 0.12 * pulse : isHover || isSel || inFocus ? 1.12 : 1);
+      o.lbl.hidden = !(isSel || isHover || inFocus);
+      if (!o.lbl.hidden) project(o.lp, o.lbl);
+    });
+    renderer.render(scene, camera);
+  }
+
+  function update(st) {
+    if (!ready) return;
+    st.segments.forEach(s => {
+      const sg = segs[s.id]; sg.status = s.status;
+      const ft = st.sensors.find(x => x.id === `FT-${s.id.slice(-1)}01`);
+      sg.flowRatio = Math.max(0.2, ft.value / s.q);
+      const chip = sg.lbl.firstChild; chip.className = `v-seg ${s.status}` + (highlight.segments.includes(s.id) ? ' sel' : '') + (locSegs.includes(s.id) ? ' loc' : '');
+    });
+    st.sensors.forEach(s => {
+      const o = sensors[s.id]; o.status = s.status;
+      const c = new THREE.Color(STATUS_COLOR[s.status]); o.mat.color.copy(c); o.mat.emissive.copy(c);
+    });
+    locStatus = st.localization.status; locSegs = st.localization.candidates.slice();
+  }
+
+  function setHighlight(h) { highlight = h; if (ready) update(E.getState()); }
+  function setFocus(f) { focusF = f; }
+
+  function flyTo(target, dist) {
+    const t1 = target.clone();
+    const dir = camera.position.clone().sub(controls.target).normalize();
+    const d = dist || Math.min(30, Math.max(14, camera.position.distanceTo(controls.target)));
+    const p1 = t1.clone().add(dir.multiplyScalar(d));
+    if (p1.y < 4) p1.y = 4;
+    tween = { t: 0, dur: REDUCED ? 0.01 : 0.9, p0: camera.position.clone(), p1, t0: controls.target.clone(), t1 };
+  }
+  function focus(sel) {
+    if (!ready || !sel) return;
+    if (sel.type === 'segment' && segs[sel.id]) flyTo(segs[sel.id].curve.getPointAt(0.5), 22);
+    if (sel.type === 'sensor' && sensors[sel.id]) flyTo(sensors[sel.id].world, 16);
+  }
+  function resetCamera() {
+    if (!ready) return;
+    tween = { t: 0, dur: REDUCED ? 0.01 : 1.1, p0: camera.position.clone(), p1: new THREE.Vector3(...HOME.pos), t0: controls.target.clone(), t1: new THREE.Vector3(...HOME.target) };
+  }
+  return {
+    init, update, setHighlight, setFocus, focus, resetCamera, resize,
+    toggleAutoRotate() { autoRotate = !autoRotate; return autoRotate; },
+    get ready() { return ready; },
+  };
+})();
+
+/* ============================================================
+   Charts helpers
+   ============================================================ */
+const HAS_CHART = typeof Chart !== 'undefined';
+if (HAS_CHART) {
+  Chart.defaults.color = C.muted;
+  Chart.defaults.font.family = F.body;
+  Chart.defaults.font.size = 11.5;
+  Chart.defaults.borderColor = C.grid;
+}
+const markerPlugin = {
+  id: 'marker',
+  afterDatasetsDraw(chart, _a, opts) {
+    if (opts == null || opts.index == null || opts.index < 0) return;
+    const x = chart.scales.x.getPixelForValue(opts.index); const { top, bottom } = chart.chartArea; const ctx = chart.ctx;
+    ctx.save(); ctx.strokeStyle = opts.color || C.crit; ctx.setLineDash([4, 3]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = opts.color || C.crit; ctx.font = `500 10px ${F.mono}`; ctx.fillText(opts.label || '', Math.min(x + 4, chart.chartArea.right - 60), top + 10);
+    ctx.restore();
+  },
+};
+const bandPlugin = {
+  id: 'band',
+  beforeDatasetsDraw(chart, _a, opts) {
+    if (!opts || !opts.lines) return;
+    const ctx = chart.ctx; const ax = opts.axis === 'x' ? chart.scales.x : chart.scales.y; const ca = chart.chartArea;
+    ctx.save(); ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    opts.lines.forEach(l => {
+      const v = ax.getPixelForValue(l.value); ctx.strokeStyle = l.color || C.muted; ctx.globalAlpha = 0.7;
+      ctx.beginPath(); if (opts.axis === 'x') { ctx.moveTo(v, ca.top); ctx.lineTo(v, ca.bottom); } else { ctx.moveTo(ca.left, v); ctx.lineTo(ca.right, v); } ctx.stroke();
+      if (l.label) { ctx.globalAlpha = 1; ctx.fillStyle = C.muted; ctx.font = `500 10px ${F.mono}`; opts.axis === 'x' ? ctx.fillText(l.label, v + 4, ca.bottom - 4) : ctx.fillText(l.label, ca.right - ctx.measureText(l.label).width - 2, v - 4); }
+    });
+    ctx.restore();
+  },
+};
+if (HAS_CHART) Chart.register(markerPlugin, bandPlugin);
+
+const tooltipBase = {
+  backgroundColor: '#0a0e0d', borderColor: C.line2, borderWidth: 1, padding: 10, cornerRadius: 6,
+  titleColor: C.text, bodyColor: C.text2, titleFont: { family: F.mono, size: 11.5, weight: '500' }, bodyFont: { family: F.mono, size: 11.5 },
+  boxWidth: 8, boxHeight: 8, boxPadding: 4, usePointStyle: true,
+};
+function lineChart(canvas, { unit, digits = 2, legend = true, mini = false, yTitle, yFmt }) {
+  if (!HAS_CHART) return null;
+  return new Chart(canvas, {
+    type: 'line', data: { labels: [], datasets: [] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: legend, position: 'top', align: 'end', labels: { boxWidth: 12, boxHeight: 2, color: C.text2, font: { family: F.mono, size: 11 }, filter: i => !i.text.includes('expected') } },
+        tooltip: { ...tooltipBase, filter: i => !i.dataset.label.includes('expected') || i.chart.data.datasets.length <= 2,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(digits)} ${unit}` } },
+      },
+      scales: {
+        x: { ticks: { color: C.muted, maxTicksLimit: mini ? 4 : 9, maxRotation: 0, font: { family: F.mono, size: 10.5 } }, grid: { color: C.grid, drawTicks: false }, border: { color: C.line2 } },
+        y: { title: { display: !!yTitle, text: yTitle, color: C.muted, font: { family: F.mono, size: 10.5 } }, ticks: { color: C.muted, maxTicksLimit: mini ? 4 : 6, font: { family: F.mono, size: 10.5 }, callback: yFmt || (v => v.toFixed(digits === 2 ? 1 : 0)) }, grid: { color: C.grid, drawTicks: false }, border: { display: false } },
+      },
+      elements: { point: { radius: 0, hoverRadius: 3.5, hitRadius: 6 }, line: { tension: 0.28, borderWidth: 1.7 } },
+    },
+  });
+}
+function seriesDatasets(ids, n, { expected = true, emphasize = null } = {}) {
+  const out = [];
+  ids.forEach(id => {
+    const s = sensorById(id); if (!s) return;
+    const ser = E.sensorSeries(id, n); const col = sensorColor(id);
+    const dim = emphasize && emphasize !== id;
+    out.push({ label: id, data: ser.values, borderColor: dim ? col + '80' : col, backgroundColor: col + '22', borderWidth: emphasize === id ? 2.8 : 1.7, fill: false });
+    if (expected) out.push({ label: id + ' expected', data: ser.expected, borderColor: col + '66', borderDash: [4, 4], borderWidth: 1, pointHitRadius: 0, fill: false });
+  });
+  return out;
+}
+function syncDatasets(chart, labels, datasets) {
+  if (!chart) return;
+  const same = chart.data.datasets.length === datasets.length && chart.data.datasets.every((d, i) => d.label === datasets[i].label);
+  chart.data.labels = labels;
+  if (same) datasets.forEach((d, i) => { const t = chart.data.datasets[i]; t.data = d.data; t.borderColor = d.borderColor; t.borderWidth = d.borderWidth; if (d.backgroundColor) t.backgroundColor = d.backgroundColor; });
+  else chart.data.datasets = datasets;
+  chart.update(same ? 'none' : undefined);
+}
+const labelsFor = n => E.getState().steps.slice(-n).map(k => hhmm(E.timeOf(k)));
+
+/* ============================================================
+   TopBar + SimulationControls + Clock
+   ============================================================ */
+const TopBar = {
+  mount() {
+    $('#settingsBtn').innerHTML = ICON.gear;
+    $('#settingsBtn').addEventListener('click', e => { e.stopPropagation(); Settings.toggle(); });
+    setInterval(TopBar.tick, 1000); TopBar.tick();
+  },
+  tick() {
+    const d = new Date();
+    $('#clock').innerHTML = `<strong>${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}</strong><small>${d.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</small>`;
+  },
+  render(st) {
+    const h = networkHealth(st); const col = STATUS_COLOR[h.status];
+    const r = 12, c = 2 * Math.PI * r;
+    $('#tbHealth').innerHTML = `<svg class="ring" viewBox="0 0 30 30"><circle cx="15" cy="15" r="${r}" fill="none" stroke="${C.line2}" stroke-width="3"/><circle cx="15" cy="15" r="${r}" fill="none" stroke="${col}" stroke-width="3" stroke-linecap="round" stroke-dasharray="${(c * h.value / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 15 15)"/></svg>
+      <div class="lbl"><small>Network health</small><strong style="color:${col}">${h.value}% <span style="font:500 12px var(--f-body);color:var(--text-2)">${h.label}</span></strong></div>`;
+    SimulationControls.render(st);
+  },
+};
+const SimulationControls = {
+  render(st) {
+    const el = $('#simControls');
+    const started = st.step > 0;
+    const t = hhmm(E.timeOf(st.step));
+    let html;
+    if (st.running) html = `<span class="running"><i></i>Running · ${t}</span><button class="btn sm" data-a="pause">${ICON.pause}Pause</button><button class="btn sm ghost" data-a="reset">${ICON.reset}Reset</button>`;
+    else if (started) html = `<span class="running paused tb-hide-sm"><i></i>Paused · ${t}</span><button class="btn sm primary" data-a="start">${ICON.play}Resume</button><button class="btn sm ghost" data-a="reset">${ICON.reset}Reset</button>`;
+    else html = `<button class="btn sm primary" data-a="start">${ICON.play}Start simulation</button>`;
+    if (el.dataset.h !== html) { el.innerHTML = html; el.dataset.h = html; }
+  },
+  mount() {
+    $('#simControls').addEventListener('click', e => {
+      const a = e.target.closest('[data-a]'); if (!a) return;
+      if (a.dataset.a === 'start') { E.start(Store.speed); Toasts.push({ sev: 'info', title: 'Simulation running', body: 'Demo readings update every minute of demo time.' }); }
+      if (a.dataset.a === 'pause') E.pause();
+      if (a.dataset.a === 'reset') { E.reset(); Toasts.seen = new Set(E.getState().alerts.map(x => x.id)); Store.set({ alertId: null }); Toasts.push({ sev: 'info', title: 'Simulation reset', body: 'Network restored to its initial demo state.' }); }
+    });
+  },
+};
+const Settings = {
+  toggle() {
+    const p = $('#settingsPop');
+    if (!p.hidden) { p.hidden = true; return; }
+    p.innerHTML = `<h4>Display &amp; simulation</h4>
+      <div class="row-between"><span>Simulation speed</span><div class="seg" id="spdSeg">${[[1600, '1×'], [800, '2×'], [400, '4×']].map(([v, l]) => `<button data-v="${v}" class="${Store.speed === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+      <div class="row-between"><label for="optLabels">Segment and node labels</label><input type="checkbox" id="optLabels" ${Store.labels ? 'checked' : ''}></div>
+      <div class="row-between"><label for="optFlow">Flow animation</label><input type="checkbox" id="optFlow" ${Store.flow ? 'checked' : ''}></div>
+      <p class="note" style="margin:0">Readings come from the built-in demo data engine. No physical sensors are connected.</p>`;
+    p.hidden = false;
+    $('#spdSeg', p).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; Store.speed = +b.dataset.v; $$('#spdSeg button', p).forEach(x => x.classList.toggle('on', x === b)); if (E.getState().running) { E.pause(); E.start(Store.speed); } });
+    $('#optLabels', p).addEventListener('change', e => { Store.set({ labels: e.target.checked }); ViewerTools.render(); });
+    $('#optFlow', p).addEventListener('change', e => { Store.set({ flow: e.target.checked }); ViewerTools.render(); });
+  },
+};
+document.addEventListener('click', e => { const p = $('#settingsPop'); if (!p.hidden && !p.contains(e.target)) p.hidden = true; });
+
+/* ============================================================
+   Sidebar
+   ============================================================ */
+const Sidebar = {
+  mount() {
+    const names = { overview: 'Overview', network: 'Network', analytics: 'Analytics', alerts: 'Alerts' };
+    $$('#nav a').forEach(a => { a.innerHTML = `${ICON[a.dataset.route]}<span>${names[a.dataset.route]}</span>` + (a.dataset.route === 'alerts' ? '<span class="badge" id="navBadge" hidden></span>' : ''); a.title = names[a.dataset.route]; });
+  },
+  render(st) {
+    $$('#nav a').forEach(a => a.classList.toggle('active', a.dataset.route === Store.route));
+    const n = st.alerts.filter(a => a.status === 'Open').length; const b = $('#navBadge');
+    b.hidden = !n; b.textContent = n;
+  },
+};
+
+/* ============================================================
+   Overview: KPIs, localization summary, recent alerts
+   ============================================================ */
+/* Tick-ring gauge: 60 ticks around the dial, lit in proportion to each part */
+function gaugeSVG(parts, value, unit) {
+  const N = 60, cx = 54, cy = 54, r1 = 45, r2 = 51;
+  const total = parts.reduce((a, p) => a + p.f, 0);
+  let html = '';
+  let acc = 0; const bounds = parts.map(p => ({ end: (acc += p.f), color: p.color }));
+  for (let i = 0; i < N; i++) {
+    const u = (i + 0.5) / N; const a = -Math.PI / 2 + u * 2 * Math.PI;
+    const part = bounds.find(b => u <= b.end + 1e-9);
+    const lit = part && u <= total + 1e-9;
+    const major = i % 5 === 0;
+    const rr1 = major ? r1 - 2 : r1;
+    html += `<line x1="${(cx + rr1 * Math.cos(a)).toFixed(2)}" y1="${(cy + rr1 * Math.sin(a)).toFixed(2)}" x2="${(cx + r2 * Math.cos(a)).toFixed(2)}" y2="${(cy + r2 * Math.sin(a)).toFixed(2)}" stroke="${lit ? part.color : C.line2}" stroke-width="${lit ? 2.4 : 1.6}" stroke-linecap="round"/>`;
+  }
+  // inner precision ring + end marker
+  html += `<circle cx="${cx}" cy="${cy}" r="38" fill="none" stroke="${C.line}" stroke-width="1"/>`;
+  if (total > 0.001 && total < 0.999) {
+    const a = -Math.PI / 2 + total * 2 * Math.PI; const last = parts.filter(p => p.f > 0).slice(-1)[0];
+    html += `<circle cx="${(cx + 38 * Math.cos(a)).toFixed(2)}" cy="${(cy + 38 * Math.sin(a)).toFixed(2)}" r="2.6" fill="${last.color}"/>`;
+  }
+  html += `<text class="rv" x="${cx}" y="${cy + 4}" text-anchor="middle">${value}</text><text class="ru" x="${cx}" y="${cy + 19}" text-anchor="middle">${unit}</text>`;
+  return `<svg viewBox="0 0 108 108" aria-hidden="true">${html}</svg>`;
+}
+
+const FOCUS_LABEL = { healthy: 'Healthy sensors', abnormal: 'Abnormal sensors', alerts: 'Sensors and segments with active alerts' };
+function focusSet(st, f) {
+  if (!f) return null;
+  if (f === 'healthy') return { sensors: new Set(st.sensors.filter(s => s.status === 'healthy').map(s => s.id)), segments: null };
+  if (f === 'abnormal') {
+    const ss = st.sensors.filter(s => s.status !== 'healthy');
+    return { sensors: new Set(ss.map(s => s.id)), segments: new Set(ss.map(s => s.segment)) };
+  }
+  const act = st.alerts.filter(a => a.status !== 'Resolved');
+  return { sensors: new Set(act.map(a => a.sensor).filter(x => x !== '—')), segments: new Set(act.flatMap(a => a.segment.split(' / '))) };
+}
+function setFocus(f) {
+  const next = Store.focus === f ? null : f;
+  SensorMonitoring.setStatus(next === 'healthy' ? 'healthy' : next === 'abnormal' ? 'abnormal' : '');
+  Store.set({ focus: next });
+  if (next) Pipeline3DViewer.resetCamera();
+}
+
+const Overview = {
+  charts: {},
+  render(st) {
+    const total = st.sensors.length;
+    const crit = st.sensors.filter(s => s.status === 'critical').length;
+    const warn = st.sensors.filter(s => s.status === 'warning').length;
+    const healthy = total - crit - warn;
+    const active = st.alerts.filter(a => a.status !== 'Resolved');
+    const openCrit = active.filter(a => a.status === 'Open' && a.severity === 'critical').length;
+    const openWarn = active.filter(a => a.status === 'Open' && a.severity === 'warning').length;
+    const ack = active.filter(a => a.status === 'Acknowledged').length;
+    const h = networkHealth(st); const L = st.localization;
+    const byType = t => { const s = st.sensors.filter(x => x.type === t); return `${s.filter(x => x.status === 'healthy').length}/${s.length}`; };
+    const segOk = st.segments.filter(s => s.status === 'healthy').length;
+    const pct = Math.round(healthy / total * 100);
+    const item = (key, parts, value, unit, label, state, stateColor, details, act) => `
+      <button class="hb ${Store.focus === key ? 'on' : ''}" data-focus="${key}" aria-pressed="${Store.focus === key}" title="${act}">
+        ${gaugeSVG(parts, value, unit)}
+        <div class="hb-txt"><div class="hb-lbl">${label}</div><div class="hb-state" style="color:${stateColor}">${state}</div>
+        <div class="hb-detail">${details}</div><div class="hb-act">${act} ›</div></div>
+      </button>`;
+    const dot = (c, t) => `<span><i style="background:${c}"></i>${t}</span>`;
+    $('#hbItems').innerHTML =
+      item('healthy', [{ f: healthy / total, color: C.ok }], healthy, `of ${total}`, 'Healthy sensors',
+        healthy === total ? 'All within range' : `${pct}% within range`, healthy === total ? C.ok : C.text,
+        dot(C.ok, `Pressure ${byType('pressure')}`) + dot(C.ok, `Flow ${byType('flow')}`),
+        Store.focus === 'healthy' ? 'Clear focus' : 'Show in 3D') +
+      item('abnormal', [{ f: crit / total, color: C.crit }, { f: warn / total, color: C.warn }], crit + warn, 'sensors', 'Abnormal sensors',
+        crit ? 'Critical deviation' : warn ? 'Warning deviation' : 'None', crit ? '#ff8a82' : warn ? '#f2bd63' : C.ok,
+        dot(C.crit, `${crit} critical`) + dot(C.warn, `${warn} warning`),
+        Store.focus === 'abnormal' ? 'Clear focus' : 'Focus in 3D') +
+      item('alerts', active.length ? [{ f: openCrit / active.length, color: C.crit }, { f: openWarn / active.length, color: C.warn }, { f: ack / active.length, color: C.steel }] : [{ f: 0, color: C.dim }],
+        active.length, 'active', 'Active alerts',
+        openCrit + openWarn ? `${openCrit + openWarn} need attention` : active.length ? 'All acknowledged' : 'No active alerts', openCrit ? '#ff8a82' : openWarn ? '#f2bd63' : C.ok,
+        dot(C.crit, `${openCrit} open critical`) + dot(C.warn, `${openWarn} open warning`) + dot(C.steel, `${ack} acknowledged`),
+        Store.focus === 'alerts' ? 'Clear focus' : 'Focus affected segments') +
+      item('health', [{ f: h.value / 100, color: STATUS_COLOR[h.status] }], h.value, 'percent', 'Network health',
+        h.label, h.status === 'healthy' ? C.ok : h.status === 'warning' ? '#f2bd63' : '#ff8a82',
+        dot(C.ok, `${segOk}/5 segments healthy`) + dot(L.status === 'localized' ? C.crit : L.status === 'ambiguous' ? C.warn : C.dim, L.candidates.length ? `Estimated ${L.candidates.join(' / ')}` : 'No segment estimated'),
+        L.candidates.length ? `Show ${L.candidates[0]}` : 'Reset view');
+    const fs = focusSet(st, Store.focus);
+    $('#hbFocus').innerHTML = Store.focus
+      ? `<span class="fchip">Focus: ${FOCUS_LABEL[Store.focus]} · ${fs.sensors.size} sensor${fs.sensors.size === 1 ? '' : 's'} highlighted<button data-clear="1" aria-label="Clear focus">✕</button></span>`
+      : `<span class="muted" style="font-size:12px">Select an indicator to focus the 3D network and sensor table</span>`;
+    $('#ovStamp').textContent = `Demo data · last update ${stamp(E.timeOf(st.step))}`;
+    LocalizationPanel.renderCompact($('#ovLoc'), st);
+    this.renderTrends(st);
+    const onlyActive = Store.focus === 'alerts';
+    const recent = (onlyActive ? active : st.alerts).slice(0, 7);
+    $('#ovAlerts').innerHTML = `<div class="panel-h"><div><h3>${onlyActive ? 'Active alerts' : 'Recent alerts & events'}</h3><div class="sub">${active.length} active · ${st.alerts.length} in the last ${Math.round(st.steps.length / 60)} h</div></div><button class="btn sm ghost" data-go="alerts">View all</button></div>
+      <div class="panel-b" style="padding-top:6px;padding-bottom:6px">${recent.length ? `<div class="list">${recent.map(a => `<div class="li" data-alert="${a.id}"><span class="dot ${a.severity}" style="${a.status === 'Resolved' ? 'opacity:.45' : ''}"></span><div style="min-width:0"><div class="sid">${a.id} <span class="muted">· ${a.segment} · ${a.status}</span></div><div class="desc">${esc(a.description)}</div></div><span class="val muted">${hhmm(a.time)}</span></div>`).join('')}</div>` : `<div class="empty">No active alerts. All sensors are within their expected range.</div>`}</div>`;
+  },
+  renderTrends(st) {
+    if (!HAS_CHART) return;
+    if (!this.charts.p) {
+      this.charts.p = lineChart($('#ovP'), { unit: 'bar', mini: false });
+      this.charts.f = lineChart($('#ovF'), { unit: 'm³/h', digits: 1, mini: false });
+      [this.charts.p, this.charts.f].forEach(ch => {
+        ch.options.onClick = e => { const els = ch.getElementsAtEventForMode(e, 'nearest', { intersect: false }, false); if (els.length) select({ type: 'sensor', id: ch.data.datasets[els[0].datasetIndex].label }); };
+        ch.options.onHover = (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; };
+      });
+    }
+    const n = 60, labels = labelsFor(n); const sel = Store.selection;
+    const emphFor = ids => { if (!sel) return null; if (sel.type === 'sensor') return ids.includes(sel.id) ? sel.id : null; return ids.find(id => sensorById(id).segment === sel.id) || null; };
+    const pIds = E.SEGMENTS.map((s, i) => `PT-${i + 1}02`), fIds = E.SEGMENTS.map((s, i) => `FT-${i + 1}01`);
+    syncDatasets(this.charts.p, labels, seriesDatasets(pIds, n, { expected: false, emphasize: emphFor(pIds) }));
+    syncDatasets(this.charts.f, labels, seriesDatasets(fIds, n, { expected: false, emphasize: emphFor(fIds) }));
+  },
+  mount() {
+    $('#ovAlerts').addEventListener('click', e => {
+      const a = e.target.closest('[data-alert]'); if (a) { Store.set({ alertId: a.dataset.alert }); go('alerts'); return; }
+      if (e.target.closest('[data-go]')) go('alerts');
+    });
+    $('#ovLoc').addEventListener('click', LocalizationPanel.onClick);
+    $('#hbItems').addEventListener('click', e => {
+      const b = e.target.closest('[data-focus]'); if (!b) return;
+      const k = b.dataset.focus;
+      if (k === 'health') {
+        if (Store.focus) setFocus(Store.focus); // clears focus
+        const L = E.getState().localization;
+        if (L.candidates.length) select({ type: 'segment', id: L.candidates[0] }); else { select(null); Pipeline3DViewer.resetCamera(); }
+        return;
+      }
+      setFocus(k);
+    });
+    $('#hbFocus').addEventListener('click', e => { if (e.target.closest('[data-clear]')) setFocus(Store.focus); });
+  },
+};
+
+/* ============================================================
+   LocalizationPanel (compact + banner + analytics)
+   ============================================================ */
+const LocalizationPanel = {
+  headline(L) {
+    if (L.status === 'localized') return { title: L.candidates[0], sub: segById(L.candidates[0]).name, pre: 'Potentially affected segment' };
+    if (L.status === 'ambiguous') return { title: L.candidates.join(' or '), sub: '', pre: 'Ambiguous · multiple candidates' };
+    return { title: 'No segment estimated', sub: '', pre: 'Localization' };
+  },
+  scoreBars(L) {
+    return `<div class="scorebars">${E.SEGMENTS.map(s => {
+      const v = L.scores[s.id] || 0; const isC = L.candidates.includes(s.id);
+      const cls = isC ? (L.status === 'localized' ? 'cand-l' : 'cand-a') : '';
+      return `<div class="sb ${cls}" data-seg="${s.id}" title="Diagnostic score for ${s.id}"><span>${s.id}</span><span class="track"><b style="width:${(v * 100).toFixed(1)}%"></b><span class="th" style="left:30%"></span></span><span>${v.toFixed(2)}</span></div>`;
+    }).join('')}</div>`;
+  },
+  evidence(L) {
+    if (!L.evidence.length) return `<p class="note" style="margin:0">Deviations across the network are too small or too inconsistent to point at a segment. The system keeps evaluating as new readings arrive.</p>`;
+    const ic = { pressure: ICON.drop, flow: ICON.wave, relation: ICON.link };
+    return `<div class="evidence">${L.evidence.map(e => `<div class="ev">${ic[e.kind]}<div><b>${esc(e.text)}</b>${e.sensor ? ` <span class="tag" data-sensor="${e.sensor}">${e.sensor}</span>` : ''}<p>${esc(e.detail)}</p></div></div>`).join('')}</div>`;
+  },
+  renderCompact(el, st) {
+    const L = st.localization; const hd = this.headline(L);
+    el.innerHTML = `<div class="panel-h"><h3>Leak localization</h3><span class="chip ${L.status}">${locLabel(L.status)}</span></div>
+      <div class="panel-b" style="display:flex;flex-direction:column;gap:14px">
+        <div><div class="eyebrow">${hd.pre}</div><div class="status-line" style="margin-top:2px"><strong style="font-size:22px;${L.status === 'localized' ? 'color:#ff8a82' : L.status === 'ambiguous' ? 'color:#f2bd63' : ''}">${hd.title}</strong>${hd.sub ? `<span class="muted">${hd.sub}</span>` : ''}${L.candidates.length ? `<button class="btn sm" data-showloc="1" style="margin-left:auto">Show in 3D</button>` : ''}</div>
+        ${L.status !== 'insufficient' ? `<p class="note" style="margin:4px 0 0">Estimated from demo readings since ${hhmm(L.since)}. Not a confirmed leak; field verification required.</p>` : ''}</div>
+        ${this.scoreBars(L)}
+        ${this.evidence(L)}
+      </div>`;
+  },
+  banner(st) {
+    const L = st.localization; const hd = this.headline(L); const el = $('#locBanner');
+    el.className = 'loc-banner ' + L.status;
+    el.innerHTML = `<div class="lb-top"><span class="eyebrow">${hd.pre}</span><span class="chip ${L.status}">${locLabel(L.status)}</span></div>
+      <div class="lb-main"><div class="lb-seg">${hd.title}${hd.sub ? `<span>${hd.sub}</span>` : ''}</div></div>
+      <div class="lb-note"><span>${L.status === 'insufficient' ? 'No consistent deviation pattern' : 'Demo estimate · not a confirmed leak'}</span><span class="mono">${L.candidates.length ? 'View ›' : ''}</span></div>`;
+    el.title = L.candidates.length ? 'Show the estimated segment in the 3D view' : '';
+  },
+  onClick(e) {
+    const t = e.target.closest('[data-seg],[data-sensor],[data-showloc]'); if (!t) return;
+    if (t.dataset.sensor) { select({ type: 'sensor', id: t.dataset.sensor }); if (Store.route === 'analytics') go('network'); return; }
+    if (t.dataset.seg) { select({ type: 'segment', id: t.dataset.seg }); if (Store.route === 'analytics') go('network'); return; }
+    const L = E.getState().localization; if (L.candidates.length) { select({ type: 'segment', id: L.candidates[0] }); if (Store.route === 'analytics') go('network'); }
+  },
+};
+
+/* ============================================================
+   ObjectInspector
+   ============================================================ */
+const ObjectInspector = {
+  key: null, charts: [],
+  destroy() { this.charts.forEach(c => c && c.destroy()); this.charts = []; },
+  render(st) {
+    const el = $('#inspector'); const sel = Store.selection;
+    const key = sel ? sel.type + sel.id : 'none';
+    if (key !== this.key) {
+      this.destroy(); this.key = key;
+      if (!sel) el.innerHTML = `<div class="insp-head"><div class="eyebrow">Inspector</div><div class="row-between"><h2>Eastern Header Network</h2></div><div class="meta">5 segments · 15 sensors · 6 nodes</div></div><div class="insp-scroll" id="iDyn"></div>`;
+      else if (sel.type === 'segment') el.innerHTML = `<div class="insp-head" id="iHead"></div><div class="insp-scroll"><div id="iDyn"></div>
+          <div class="insp-sec"><h4><span>Pressure · last 60 min</span><span>bar</span></h4><div class="mini-chart"><canvas id="iC1"></canvas></div></div>
+          <div class="insp-sec"><h4><span>Flow · last 60 min</span><span>m³/h</span></h4><div class="mini-chart" style="height:120px"><canvas id="iC2"></canvas></div></div>
+          <div id="iDyn2"></div></div>`;
+      else el.innerHTML = `<div class="insp-head" id="iHead"></div><div class="insp-scroll"><div id="iDyn"></div>
+          <div class="insp-sec"><h4><span>Trend · last 90 min</span><span id="iUnit"></span></h4><div class="mini-chart" style="height:170px"><canvas id="iC1"></canvas></div></div>
+          <div id="iDyn2"></div></div>`;
+      if (sel && sel.type === 'segment') {
+        this.charts = [lineChart($('#iC1'), { unit: 'bar', mini: true, legend: true }), lineChart($('#iC2'), { unit: 'm³/h', digits: 1, mini: true, legend: false })];
+      } else if (sel) {
+        const s = sensorById(sel.id);
+        this.charts = [lineChart($('#iC1'), { unit: s.unit, digits: s.type === 'pressure' ? 2 : 1, mini: true, legend: false })];
+      }
+    }
+    if (!sel) return this.renderNone(st);
+    if (sel.type === 'segment') this.renderSegment(st, sel.id); else this.renderSensor(st, sel.id);
+  },
+  renderNone(st) {
+    const L = st.localization;
+    $('#iDyn').innerHTML = `<div class="insp-sec"><div class="empty" style="padding:8px 0">${ICON.cursor}<span>Select a segment or sensor in the 3D view, the segment list or the sensor table to inspect it.</span></div></div>
+      <div class="insp-sec"><h4>Segments</h4><div class="list">${st.segments.map(s => {
+        const ft = st.sensors.find(x => x.id === `FT-${s.id.slice(-1)}01`);
+        return `<div class="li" data-seg="${s.id}"><span class="dot ${s.status}"></span><div style="min-width:0"><div class="sid">${s.id} <span class="muted">· ${s.name}</span></div><div class="desc">${s.dn} · ${s.lengthM.toLocaleString()} m${L.candidates.includes(s.id) ? ' · <span style="color:#ff8a82">estimated</span>' : ''}</div></div><span class="val">${fmtV(ft)}<span class="muted"> m³/h</span></span></div>`;
+      }).join('')}</div></div>
+      <div class="insp-sec"><h4><span>Localization</span><span class="chip ${L.status}" style="text-transform:none;letter-spacing:0">${locLabel(L.status)}</span></h4>${LocalizationPanel.scoreBars(L)}</div>`;
+  },
+  renderSegment(st, id) {
+    const s = segById(id); const L = st.localization;
+    const ss = st.sensors.filter(x => x.segment === id);
+    const pIn = ss.find(x => x.id.endsWith('01') && x.type === 'pressure'), pOut = ss.find(x => x.id.endsWith('02')), ft = ss.find(x => x.type === 'flow');
+    const isC = L.candidates.includes(id);
+    $('#iHead').innerHTML = `<div class="eyebrow">Pipeline segment</div><div class="row-between"><h2>${s.id}</h2>${statusChip(s.status)}</div><div class="meta">${s.name} · ${s.from} → ${s.to}</div>`;
+    $('#iDyn').innerHTML = `<div class="insp-sec"><h4>Latest readings</h4><div class="kv">
+        <div><small>Inlet pressure · ${pIn.id}</small><b>${fmtV(pIn)} bar</b></div>
+        <div><small>Outlet pressure · ${pOut.id}</small><b>${fmtV(pOut)} bar</b></div>
+        <div><small>Flow · ${ft.id}</small><b>${fmtV(ft)} m³/h</b></div>
+        <div><small>Flow vs expected</small><b class="dev ${Math.abs(ft.z) < 3.2 ? 'ok' : ft.dev < 0 ? 'neg' : 'pos'}">${fmtDev(ft)} m³/h</b></div>
+        <div><small>Nominal size</small><b>${s.dn}</b></div>
+        <div><small>Length</small><b>${s.lengthM.toLocaleString()} m</b></div></div></div>
+      <div class="insp-sec"><h4><span>Localization evidence</span><span class="chip ${isC ? L.status : 'insufficient'}" style="letter-spacing:0;text-transform:none">${isC ? (L.status === 'localized' ? 'Estimated segment' : 'Ambiguous candidate') : 'Not estimated'}</span></h4>
+        <div class="sb ${isC ? (L.status === 'localized' ? 'cand-l' : 'cand-a') : ''}"><span>Score</span><span class="track"><b style="width:${((L.scores[id] || 0) * 100).toFixed(1)}%"></b><span class="th" style="left:30%"></span></span><span>${(L.scores[id] || 0).toFixed(2)}</span></div>
+        ${isC ? LocalizationPanel.evidence(L) : `<p class="note" style="margin:0">${L.status === 'insufficient' ? 'No segment currently has enough evidence.' : `Current estimate points at ${L.candidates.join(' / ')}.`}</p>`}</div>`;
+    const n = 60, labels = labelsFor(n);
+    const emph = null;
+    syncDatasets(this.charts[0], labels, seriesDatasets([pIn.id, pOut.id], n, { expected: false, emphasize: emph }));
+    syncDatasets(this.charts[1], labels, seriesDatasets([ft.id], n, { expected: true }));
+    const al = st.alerts.filter(a => a.segment.includes(id)).slice(0, 5);
+    $('#iDyn2').innerHTML = `<div class="insp-sec"><h4>Connected sensors</h4><div class="list">${ss.map(x => `<div class="li" data-sensor="${x.id}"><span class="dot ${x.status}"></span><div style="min-width:0"><div class="sid">${x.id}</div><div class="desc">${cap(x.type)} · ${Math.round(x.t * s.lengthM)} m from ${s.from}</div></div><span class="val">${fmtV(x)}<span class="muted"> ${x.unit}</span></span></div>`).join('')}</div></div>
+      <div class="insp-sec"><h4>Related alerts</h4>${al.length ? `<div class="list">${al.map(a => `<div class="li" data-alert="${a.id}"><span class="dot ${a.severity}"></span><div style="min-width:0"><div class="sid">${a.id} <span class="muted">· ${a.status}</span></div><div class="desc">${esc(a.description)}</div></div><span class="val muted">${hhmm(a.time)}</span></div>`).join('')}</div>` : '<p class="note" style="margin:0">No alerts recorded for this segment.</p>'}</div>`;
+  },
+  renderSensor(st, id) {
+    const s = sensorById(id); const sg = segById(s.segment);
+    $('#iHead').innerHTML = `<div class="eyebrow">${s.type === 'pressure' ? 'Pressure transmitter' : 'Flow meter'}</div><div class="row-between"><h2>${s.id}</h2>${statusChip(s.status)}</div><div class="meta">On <span class="tag" data-seg="${s.segment}">${s.segment}</span> · ${sg.name} · ${Math.round(s.t * sg.lengthM)} m from ${sg.from}</div>`;
+    $('#iUnit').textContent = s.unit;
+    const devCls = Math.abs(s.z) < 3.2 ? 'ok' : s.dev < 0 ? 'neg' : 'pos';
+    $('#iDyn').innerHTML = `<div class="insp-sec"><h4><span>Current reading</span><span>${hhmm(s.lastUpdate)}</span></h4>
+      <div class="reading"><span class="big">${fmtV(s)}</span><span class="u">${s.unit}</span></div>
+      <div class="kv"><div><small>Measurement</small><b>${cap(s.type)}</b></div><div><small>Expected</small><b>${fmtV(s, s.expected)} ${s.unit}</b></div>
+      <div><small>Deviation</small><b class="dev ${devCls}">${fmtDev(s)} ${s.unit}</b></div><div><small>Deviation (σ)</small><b class="dev ${devCls}">${s.z >= 0 ? '+' : '−'}${Math.abs(s.z).toFixed(1)}σ</b></div>
+      <div><small>Last update</small><b>${stamp(s.lastUpdate)}</b></div><div><small>Warning / critical at</small><b>3.2σ / 6.5σ</b></div></div></div>`;
+    const n = 90;
+    const lo = s.expHistory.slice(-n).map(v => v - 3.2 * s.sigma), hi = s.expHistory.slice(-n).map(v => v + 3.2 * s.sigma);
+    const col = sensorColor(id);
+    const ser = E.sensorSeries(id, n);
+    syncDatasets(this.charts[0], labelsFor(n), [
+      { label: 'band hi expected', data: hi, borderColor: 'transparent', backgroundColor: 'rgba(136,185,255,.07)', fill: '+1', pointHitRadius: 0 },
+      { label: 'band lo expected', data: lo, borderColor: 'transparent', fill: false, pointHitRadius: 0 },
+      { label: s.id + ' expected', data: ser.expected, borderColor: col + '77', borderDash: [4, 4], borderWidth: 1, fill: false, pointHitRadius: 0 },
+      { label: s.id, data: ser.values, borderColor: col, borderWidth: 2, fill: false },
+    ]);
+    if (this.charts[0]) this.charts[0].options.plugins.tooltip.filter = i => !i.dataset.label.startsWith('band');
+    const al = st.alerts.filter(a => a.sensor === id).slice(0, 6);
+    $('#iDyn2').innerHTML = `<div class="insp-sec"><h4>Related alerts</h4>${al.length ? `<div class="list">${al.map(a => `<div class="li" data-alert="${a.id}"><span class="dot ${a.severity}"></span><div style="min-width:0"><div class="sid">${a.id} <span class="muted">· ${a.status}</span></div><div class="desc">${esc(a.description)}</div></div><span class="val muted">${hhmm(a.time)}</span></div>`).join('')}</div>` : '<p class="note" style="margin:0">No alerts recorded for this sensor in the current window.</p>'}</div>`;
+  },
+  mount() {
+    $('#inspector').addEventListener('click', e => {
+      const t = e.target.closest('[data-seg],[data-sensor],[data-alert]'); if (!t) return;
+      if (t.dataset.alert) { Store.set({ alertId: t.dataset.alert }); go('alerts'); }
+      else if (t.dataset.sensor) select({ type: 'sensor', id: t.dataset.sensor });
+      else select({ type: 'segment', id: t.dataset.seg });
+    });
+  },
+};
+
+/* ============================================================
+   SensorMonitoring
+   ============================================================ */
+const SensorMonitoring = {
+  q: '', type: '', status: '', prevStatus: {},
+  mount() {
+    const el = $('#sensorPanel');
+    el.innerHTML = `<div class="panel-h"><div><h3>Sensor monitoring</h3><div class="sub" id="smCount"></div></div>
+      <div class="toolbar"><input class="input" id="smQ" placeholder="Search sensor ID" aria-label="Search sensor ID" autocomplete="off">
+      <select class="select" id="smType" aria-label="Measurement type"><option value="">All types</option><option value="pressure">Pressure</option><option value="flow">Flow</option></select>
+      <select class="select" id="smStatus" aria-label="Status"><option value="">All statuses</option><option value="healthy">Healthy</option><option value="abnormal">Abnormal (warning + critical)</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Sensor</th><th>Type</th><th class="r">Reading</th><th class="r">Expected</th><th>Deviation</th><th>Status</th><th>Segment</th><th>Last update</th></tr></thead><tbody id="smBody"></tbody></table>
+      <div class="empty" id="smEmpty" hidden>${ICON.filter}<span>No sensors match these filters.</span><button class="btn sm" id="smClear">Clear filters</button></div></div>`;
+    $('#smQ').addEventListener('input', e => { this.q = e.target.value.trim().toUpperCase(); this.render(E.getState()); });
+    $('#smType').addEventListener('change', e => { this.type = e.target.value; this.render(E.getState()); });
+    $('#smStatus').addEventListener('change', e => { this.status = e.target.value; if (Store.focus && Store.focus !== 'alerts' && Store.focus !== e.target.value) Store.set({ focus: null }); else this.render(E.getState()); });
+    $('#smClear').addEventListener('click', () => { this.q = this.type = this.status = ''; if (Store.focus) Store.set({ focus: null }); $('#smQ').value = ''; $('#smType').value = ''; $('#smStatus').value = ''; this.render(E.getState()); });
+    $('#smBody').addEventListener('click', e => { const tr = e.target.closest('tr[data-id]'); if (tr) select({ type: 'sensor', id: tr.dataset.id }); });
+  },
+  setStatus(v) { this.status = v; const el = $('#smStatus'); if (el) el.value = v; },
+  render(st) {
+    const stOk = s => !this.status || (this.status === 'abnormal' ? s.status !== 'healthy' : s.status === this.status);
+    const rows = st.sensors.filter(s => (!this.q || s.id.includes(this.q)) && (!this.type || s.type === this.type) && stOk(s));
+    const sel = Store.selection && Store.selection.type === 'sensor' ? Store.selection.id : null;
+    const selSeg = Store.selection && Store.selection.type === 'segment' ? Store.selection.id : null;
+    $('#smBody').innerHTML = rows.map(s => {
+      const az = Math.min(1, Math.abs(s.z) / 10); const col = STATUS_COLOR[s.status];
+      const flash = this.prevStatus[s.id] && this.prevStatus[s.id] !== s.status && s.status !== 'healthy';
+      return `<tr data-id="${s.id}" class="${s.id === sel || s.segment === selSeg ? 'sel' : ''}${flash ? ' flash' : ''}">
+        <td class="m"><b style="font-weight:500">${s.id}</b></td><td>${cap(s.type)}</td>
+        <td class="m r">${fmtV(s)} <span class="muted">${s.unit}</span></td><td class="m r muted">${fmtV(s, s.expected)}</td>
+        <td><span class="devbar"><span class="tr"><b style="width:${(az * 100).toFixed(0)}%;background:${col}"></b></span><span class="m mono" style="font-size:12px;color:${s.status === 'healthy' ? C.muted : col}">${s.z >= 0 ? '+' : '−'}${Math.abs(s.z).toFixed(1)}σ</span></span></td>
+        <td>${statusChip(s.status)}</td><td class="m">${s.segment}</td><td class="m muted">${hhmm(s.lastUpdate)}</td></tr>`;
+    }).join('');
+    st.sensors.forEach(s => this.prevStatus[s.id] = s.status);
+    $('#smEmpty').hidden = rows.length > 0;
+    $('#smCount').textContent = `${rows.length} of ${st.sensors.length} sensors · demo readings`;
+  },
+};
+
+/* ============================================================
+   Network view: segment rail
+   ============================================================ */
+const SegmentRail = {
+  mount() { $('#segRail').addEventListener('click', e => { const c = e.target.closest('[data-seg]'); if (c) select({ type: 'segment', id: c.dataset.seg }); }); },
+  render(st) {
+    const sel = Store.selection; const L = st.localization;
+    $('#segRail').innerHTML = `<div class="eyebrow" style="padding:2px 2px 4px">Segments</div>` + st.segments.map(s => {
+      const ft = st.sensors.find(x => x.id === `FT-${s.id.slice(-1)}01`); const p2 = st.sensors.find(x => x.id === `PT-${s.id.slice(-1)}02`);
+      const isSel = sel && (sel.type === 'segment' ? sel.id === s.id : sensorById(sel.id).segment === s.id);
+      return `<button class="seg-card ${isSel ? 'sel' : ''} ${L.candidates.includes(s.id) ? 'loc' : ''}" data-seg="${s.id}"><span class="row-between"><b>${s.id}</b><span class="dot ${s.status}"></span></span><small>${s.name} · ${s.dn}</small><span class="vals"><span>${fmtV(ft)} m³/h</span><span>${fmtV(p2)} bar</span></span></button>`;
+    }).join('');
+  },
+};
+
+/* ============================================================
+   Viewer tools
+   ============================================================ */
+const ViewerTools = {
+  rot: false,
+  mount() {
+    $('#viewerTools').addEventListener('click', e => {
+      const b = e.target.closest('[data-t]'); if (!b) return;
+      if (b.dataset.t === 'reset') Pipeline3DViewer.resetCamera();
+      if (b.dataset.t === 'labels') Store.set({ labels: !Store.labels });
+      if (b.dataset.t === 'flow') Store.set({ flow: !Store.flow });
+      if (b.dataset.t === 'rotate') this.rot = Pipeline3DViewer.toggleAutoRotate();
+      this.render();
+    });
+    const lb = $('#locBanner');
+    lb.addEventListener('click', LocalizationPanel.onClick);
+    lb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); LocalizationPanel.onClick(e); } });
+    this.render();
+  },
+  render() {
+    $('#viewerTools').innerHTML = `
+      <button class="iconbtn" data-t="reset" title="Reset camera" aria-label="Reset camera">${ICON.camera}</button>
+      <button class="iconbtn ${this.rot ? 'on' : ''}" data-t="rotate" title="Auto-rotate" aria-label="Auto-rotate" aria-pressed="${this.rot}">${ICON.orbit}</button>
+      <button class="iconbtn ${Store.labels ? 'on' : ''}" data-t="labels" title="Show labels" aria-label="Show labels" aria-pressed="${Store.labels}">${ICON.tag}</button>
+      <button class="iconbtn ${Store.flow ? 'on' : ''}" data-t="flow" title="Flow animation" aria-label="Flow animation" aria-pressed="${Store.flow}">${ICON.flow}</button>`;
+  },
+};
+
+/* ============================================================
+   Analytics
+   ============================================================ */
+const Analytics = {
+  charts: {},
+  mount() {
+    $('#rangeSeg').innerHTML = [[30, '30m'], [60, '1h'], [120, '2h'], [360, 'All']].map(([v, l]) => `<button data-v="${v}" class="${Store.range === v ? 'on' : ''}">${l}</button>`).join('');
+    $('#rangeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; Store.set({ range: +b.dataset.v }); $$('#rangeSeg button').forEach(x => x.classList.toggle('on', x === b)); this.render(E.getState()); });
+    const st = E.getState();
+    const picker = (el, key, ids) => {
+      el.addEventListener('click', e => {
+        const b = e.target.closest('[data-id]'); if (!b) return;
+        const cur = Store[key]; const id = b.dataset.id;
+        const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+        if (!next.length) return; Store[key] = next; this.renderPickers(); this.render(E.getState());
+      });
+      el.dataset.ids = ids.join(',');
+    };
+    picker($('#pickPressure'), 'pickPressure', st.sensors.filter(s => s.type === 'pressure').map(s => s.id));
+    picker($('#pickFlow'), 'pickFlow', st.sensors.filter(s => s.type === 'flow').map(s => s.id));
+    picker($('#pickCompare'), 'pickCompare', st.sensors.map(s => s.id));
+    this.renderPickers();
+    if (!HAS_CHART) { $$('#view-analytics canvas').forEach(c => c.parentElement.innerHTML = '<div class="empty">Charts could not load. Check the network connection and reload.</div>'); return; }
+    this.charts.p = lineChart($('#chPressure'), { unit: 'bar', yTitle: 'bar' });
+    this.charts.f = lineChart($('#chFlow'), { unit: 'm³/h', digits: 1, yTitle: 'm³/h' });
+    this.charts.c = lineChart($('#chCompare'), { unit: 'σ', digits: 1, yTitle: 'σ from expected', yFmt: v => v.toFixed(0) });
+    this.charts.c.options.plugins.band = { axis: 'y', lines: [{ value: 3.2, label: '+3.2σ warning' }, { value: -3.2, label: '−3.2σ' }] };
+    // anomaly timeline
+    const ids = st.sensors.map(s => s.id);
+    this.timelineIds = ids;
+    this.charts.t = new Chart($('#chTimeline'), {
+      type: 'scatter', data: { datasets: [] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+        plugins: { legend: { display: false }, tooltip: { ...tooltipBase, callbacks: {
+          title: items => items[0].raw.ev.alert,
+          label: item => { const ev = item.raw.ev; return [` ${stamp(ev.time)}`, ` Sensor ${ev.sensor} · ${ev.segment}`, ` ${cap(ev.severity)} · ${ev.kind}`]; } } } },
+        scales: {
+          x: { type: 'linear', ticks: { color: C.muted, maxTicksLimit: 9, font: { family: F.mono, size: 10.5 }, callback: v => hhmm(E.timeOf(v)) }, grid: { color: C.grid, drawTicks: false }, border: { color: C.line2 } },
+          y: { type: 'linear', min: -0.5, max: ids.length - 0.5, reverse: true, afterBuildTicks: ax => { ax.ticks = ids.map((_, i) => ({ value: i })); }, ticks: { stepSize: 1, autoSkip: false, color: C.text2, font: { family: F.mono, size: 10.5 }, callback: v => ids[v] || '' }, grid: { color: C.grid, drawTicks: false }, border: { display: false } },
+        },
+        onClick: (_e, els) => { if (!els.length) return; const ev = this.charts.t.data.datasets[els[0].datasetIndex].data[els[0].index].ev; Store.set({ alertId: ev.alert }); go('alerts'); },
+        onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      },
+    });
+    // localization bars
+    this.charts.l = new Chart($('#chLoc'), {
+      type: 'bar', data: { labels: E.SEGMENTS.map(s => s.id), datasets: [{ data: [], backgroundColor: [], borderRadius: 3, barThickness: 16 }] },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: { duration: 400 },
+        plugins: { legend: { display: false }, band: { axis: 'x', lines: [{ value: 0.3, label: 'threshold' }] },
+          tooltip: { ...tooltipBase, callbacks: { label: c => ` Diagnostic score ${c.parsed.x.toFixed(2)}` } } },
+        scales: { x: { min: 0, max: 1, ticks: { color: C.muted, font: { family: F.mono, size: 10.5 }, stepSize: 0.2 }, grid: { color: C.grid, drawTicks: false }, border: { color: C.line2 } },
+          y: { ticks: { color: C.text2, font: { family: F.mono, size: 11.5 } }, grid: { display: false }, border: { display: false } } },
+        onClick: (_e, els) => { if (!els.length) return; select({ type: 'segment', id: E.SEGMENTS[els[0].index].id }); go('network'); },
+        onHover: (e, els) => { e.native.target.style.cursor = els.length ? 'pointer' : 'default'; },
+      },
+    });
+    this.charts.lh = lineChart($('#chLocHist'), { unit: '', digits: 2, mini: true, yFmt: v => v.toFixed(1) });
+    this.charts.lh.options.scales.y.min = 0; this.charts.lh.options.scales.y.max = 1;
+    this.charts.lh.options.plugins.band = { axis: 'y', lines: [{ value: 0.3 }] };
+    $('#anLoc').addEventListener('click', LocalizationPanel.onClick);
+  },
+  renderPickers() {
+    [['#pickPressure', 'pickPressure'], ['#pickFlow', 'pickFlow'], ['#pickCompare', 'pickCompare']].forEach(([sel, key]) => {
+      const el = $(sel); const st = E.getState();
+      el.innerHTML = el.dataset.ids.split(',').map(id => { const on = Store[key].includes(id); const s = sensorById(id);
+        return `<button class="pick ${on ? 'on' : ''}" data-id="${id}" aria-pressed="${on}"><i style="background:${on ? sensorColor(id) : ''}"></i>${id}${s.status !== 'healthy' ? `<span class="dot ${s.status}" style="width:6px;height:6px"></span>` : ''}</button>`; }).join('');
+    });
+  },
+  render(st) {
+    if (Store.route !== 'analytics' || !HAS_CHART) return;
+    const n = Math.min(Store.range, st.steps.length); const labels = labelsFor(n);
+    const emph = Store.selection && Store.selection.type === 'sensor' ? Store.selection.id : null;
+    syncDatasets(this.charts.p, labels, seriesDatasets(Store.pickPressure, n, { emphasize: emph && Store.pickPressure.includes(emph) ? emph : null }));
+    syncDatasets(this.charts.f, labels, seriesDatasets(Store.pickFlow, n, { emphasize: emph && Store.pickFlow.includes(emph) ? emph : null }));
+    syncDatasets(this.charts.c, labels, Store.pickCompare.map(id => {
+      const s = sensorById(id); const v = s.history.slice(-n), e = s.expHistory.slice(-n); const col = sensorColor(id);
+      return { label: id, data: v.map((x, i) => (x - e[i]) / s.sigma), borderColor: emph && emph !== id ? col + '80' : col, borderWidth: emph === id ? 2.8 : 1.7, fill: false };
+    }));
+    // timeline
+    const minStep = st.steps[st.steps.length - n];
+    const evs = st.events.filter(ev => ev.step >= minStep);
+    const mk = (sev, kind, style) => ({ label: sev + kind, pointStyle: style, pointRadius: kind === 'localization' ? 7 : 5.5, pointHoverRadius: 8, backgroundColor: (sev === 'critical' ? C.crit : C.warn) + (kind === 'opened' ? 'dd' : 'ff'), borderColor: C.panel, borderWidth: 1,
+      data: evs.filter(ev => ev.severity === sev && ev.kind === kind).map(ev => ({ x: ev.step, y: Math.max(0, this.timelineIds.indexOf(ev.sensor)), ev })) });
+    this.charts.t.data.datasets = ['warning', 'critical'].flatMap(sev => [mk(sev, 'opened', 'circle'), mk(sev, 'escalated', 'triangle'), mk(sev, 'localization', 'rectRot')]);
+    this.charts.t.options.scales.x.min = minStep; this.charts.t.options.scales.x.max = st.step + 1;
+    this.charts.t.update('none');
+    // localization
+    const L = st.localization;
+    const ds = this.charts.l.data.datasets[0];
+    ds.data = E.SEGMENTS.map(s => L.scores[s.id] || 0);
+    ds.backgroundColor = E.SEGMENTS.map(s => L.candidates.includes(s.id) ? (L.status === 'localized' ? C.crit : C.warn) : C.steel + 'aa');
+    this.charts.l.update();
+    const lh = st.locHistory.slice(-n);
+    syncDatasets(this.charts.lh, labels.slice(-lh.length), E.SEGMENTS.map((s, i) => ({ label: s.id, data: lh.map(r => r[s.id]), borderColor: L.candidates.includes(s.id) ? (L.status === 'localized' ? C.crit : C.warn) : SERIES[i] + '99', borderWidth: L.candidates.includes(s.id) ? 2.2 : 1.3, fill: false })));
+    const hd = LocalizationPanel.headline(L);
+    $('#anLocStatus').innerHTML = `<div class="status-line"><span class="chip ${L.status}">${locLabel(L.status)}</span><strong>${hd.title}</strong></div>`;
+    $('#anLocEvidence').innerHTML = `<div class="eyebrow" style="margin-bottom:8px">${L.status === 'insufficient' ? 'Evidence' : 'Supporting evidence'}</div>${LocalizationPanel.evidence(L)}${L.candidates.length ? `<button class="btn sm" data-showloc="1" style="margin-top:12px">Show ${L.candidates[0]} in 3D</button>` : ''}`;
+    if (st.step % 5 === 0) this.renderPickers();
+  },
+};
+
+/* ============================================================
+   Alerts
+   ============================================================ */
+const Alerts = {
+  f: { sev: '', status: '', sensor: '', segment: '' }, chart: null, chartKey: null,
+  mount() {
+    const st = E.getState();
+    $('#fSensor').innerHTML += st.sensors.map(s => `<option>${s.id}</option>`).join('');
+    $('#fSegment').innerHTML += st.segments.map(s => `<option>${s.id}</option>`).join('');
+    [['#fSev', 'sev'], ['#fStatus', 'status'], ['#fSensor', 'sensor'], ['#fSegment', 'segment']].forEach(([s, k]) => $(s).addEventListener('change', e => { this.f[k] = e.target.value; this.render(E.getState()); }));
+    const clear = () => { this.f = { sev: '', status: '', sensor: '', segment: '' }; ['#fSev', '#fStatus', '#fSensor', '#fSegment'].forEach(s => $(s).value = ''); this.render(E.getState()); };
+    $('#fClear').addEventListener('click', clear);
+    $('#alertEmpty').addEventListener('click', e => { if (e.target.closest('button')) clear(); });
+    $('#alertTable tbody').addEventListener('click', e => { const tr = e.target.closest('tr[data-id]'); if (tr) { Store.set({ alertId: tr.dataset.id }); const a = E.getState().alerts.find(x => x.id === tr.dataset.id); if (a) Pipeline3DViewer.focus({ type: 'segment', id: a.segment.split(' / ')[0] }); } });
+    $('#invBody').addEventListener('click', e => {
+      const t = e.target.closest('[data-act],[data-sensor],[data-seg],[data-showloc]'); if (!t) return;
+      if (t.dataset.act === 'ack') E.acknowledge(Store.alertId);
+      if (t.dataset.act === 'open-sensor') { select({ type: 'sensor', id: t.dataset.id }); go('network'); }
+      if (t.dataset.act === 'open-seg') { select({ type: 'segment', id: t.dataset.id }); go('network'); }
+      if (t.dataset.sensor && !t.dataset.act) { select({ type: 'sensor', id: t.dataset.sensor }); go('network'); }
+      if (t.dataset.seg && !t.dataset.act) { select({ type: 'segment', id: t.dataset.seg }); go('network'); }
+    });
+  },
+  filtered(st) {
+    const f = this.f;
+    return st.alerts.filter(a => (!f.sev || a.severity === f.sev) && (!f.status || a.status === f.status) && (!f.sensor || a.sensor === f.sensor) && (!f.segment || a.segment.includes(f.segment)));
+  },
+  render(st) {
+    const all = st.alerts;
+    $('#alertCounts').innerHTML = `<span class="chip open">Open ${all.filter(a => a.status === 'Open').length}</span><span class="chip ack">Acknowledged ${all.filter(a => a.status === 'Acknowledged').length}</span><span class="chip resolved">Resolved ${all.filter(a => a.status === 'Resolved').length}</span>`;
+    if (Store.route !== 'alerts') return;
+    if (!Store.alertId && all.length) Store.alertId = (all.find(a => a.status !== 'Resolved') || all[0]).id;
+    const rows = this.filtered(st);
+    $('#alertShown').textContent = `${rows.length} of ${all.length} alerts`;
+    $('#alertTable tbody').innerHTML = rows.map(a => `<tr data-id="${a.id}" class="${a.id === Store.alertId ? 'sel' : ''}">
+      <td class="m">${a.id}</td><td>${sevChip(a.severity)}</td><td>${alertStatusChip(a.status)}</td><td class="m">${stamp(a.time)}</td><td class="m">${a.sensor}</td><td class="m">${a.segment}</td><td class="desc">${a.kind === 'localization' ? '<span class="chip plain insufficient" style="height:18px;margin-right:6px;font-size:10.5px">Localization</span>' : ''}${esc(a.description)}</td></tr>`).join('');
+    $('#alertEmpty').hidden = rows.length > 0;
+    $('#alertEmpty').innerHTML = `${ICON.filter}<span>No alerts match these filters.</span><button class="btn sm">Clear filters</button>`;
+    this.renderInv(st);
+  },
+  renderInv(st) {
+    const a = st.alerts.find(x => x.id === Store.alertId);
+    const body = $('#invBody');
+    if (!a) { body.innerHTML = `<div class="empty">${ICON.alerts}<span>Select an alert to investigate it.</span></div>`; if (this.chart) { this.chart.destroy(); this.chart = null; this.chartKey = null; } return; }
+    const segId = a.segment.split(' / ')[0];
+    const ss = st.sensors.filter(s => s.segment === segId);
+    const L = st.localization; const isC = a.segment.split(' / ').some(x => L.candidates.includes(x));
+    const key = a.id;
+    const n = 90; const labels = labelsFor(n);
+    const idx = n - 1 - (st.step - a.step);
+    if (this.chartKey !== key) {
+      body.innerHTML = `<div class="inv-sec" style="border-top:0;padding-top:4px" id="invHead"></div>
+        <div class="inv-sec"><h4>Pressure &amp; flow context · ${segId}</h4><div class="mini-chart" style="height:170px"><canvas id="invChart"></canvas></div><p class="note" style="margin:0">Pressure on the left axis (bar), flow on the right axis (m³/h). Dashed marker shows when the alert opened.</p></div>
+        <div class="inv-sec"><h4>Related sensor readings</h4><div id="invSensors"></div></div>
+        <div class="inv-sec"><h4>Localization evidence</h4><div id="invLoc"></div></div>`;
+      if (this.chart) this.chart.destroy();
+      this.chart = HAS_CHART ? lineChart($('#invChart'), { unit: '', mini: true, legend: true }) : null;
+      if (this.chart) {
+        this.chart.options.scales.y1 = { position: 'right', ticks: { color: C.muted, maxTicksLimit: 4, font: { family: F.mono, size: 10.5 }, callback: v => v.toFixed(0) }, grid: { display: false }, border: { display: false } };
+        this.chart.options.plugins.tooltip.callbacks.label = ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(ctx.dataset.yAxisID === 'y1' ? 1 : 2)} ${ctx.dataset.yAxisID === 'y1' ? 'm³/h' : 'bar'}`;
+      }
+      this.chartKey = key;
+    }
+    $('#invHead').innerHTML = `<div class="row-between"><div><div class="eyebrow">${a.kind === 'localization' ? 'Localization alert' : 'Sensor alert'}</div><h2 style="margin:2px 0 0;font:600 21px var(--f-display)">${a.id}</h2></div><div style="display:flex;gap:6px">${sevChip(a.severity)}${alertStatusChip(a.status)}</div></div>
+      <p style="margin:0;color:var(--text-2)">${esc(a.description)}</p>
+      <div class="kv"><div><small>Opened</small><b>${stamp(a.time)}</b></div><div><small>${a.status === 'Resolved' ? 'Resolved' : 'Duration'}</small><b>${a.status === 'Resolved' ? stamp(a.resolvedTime) : Math.max(0, st.step - a.step) + ' min'}</b></div>
+      <div><small>Sensor</small><b>${a.sensor !== '—' ? `<span class="tag" data-sensor="${a.sensor}">${a.sensor}</span>` : '—'}</b></div><div><small>Segment</small><b>${a.segment.split(' / ').map(x => `<span class="tag" data-seg="${x}">${x}</span>`).join(' ')}</b></div>
+      ${a.peakZ ? `<div><small>Peak deviation</small><b>${a.peakZ.toFixed(1)}σ</b></div>` : ''}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm primary" data-act="ack" ${a.status !== 'Open' ? 'disabled' : ''}>${a.status === 'Open' ? 'Acknowledge' : a.status}</button>
+      ${a.sensor !== '—' ? `<button class="btn sm" data-act="open-sensor" data-id="${a.sensor}">Inspect sensor</button>` : ''}<button class="btn sm" data-act="open-seg" data-id="${segId}">Inspect ${segId}</button></div>`;
+    if (this.chart) {
+      const ids = ss.map(s => s.id);
+      const ds = ids.map(id => { const s = sensorById(id); const ser = E.sensorSeries(id, n); return { label: id, data: ser.values, borderColor: sensorColor(id), yAxisID: s.type === 'flow' ? 'y1' : 'y', borderWidth: id === a.sensor ? 2.4 : 1.5, borderDash: s.type === 'flow' ? [] : [], fill: false }; });
+      this.chart.options.plugins.marker = { index: idx >= 0 ? idx : null, label: hhmm(a.time), color: a.severity === 'critical' ? C.crit : C.warn };
+      syncDatasets(this.chart, labels, ds);
+    }
+    $('#invSensors').innerHTML = `<div class="list">${ss.map(s => `<div class="li ${s.id === a.sensor ? 'sel' : ''}" data-sensor="${s.id}"><span class="dot ${s.status}"></span><div style="min-width:0"><div class="sid">${s.id}</div><div class="desc">${cap(s.type)} · expected ${fmtV(s, s.expected)} ${s.unit}</div></div><span class="val">${fmtV(s)} <span class="muted">${s.unit}</span><br><span class="dev ${Math.abs(s.z) < 3.2 ? 'ok' : s.dev < 0 ? 'neg' : 'pos'}">${s.z >= 0 ? '+' : '−'}${Math.abs(s.z).toFixed(1)}σ</span></span></div>`).join('')}</div>`;
+    $('#invLoc').innerHTML = isC ? `<div class="status-line" style="margin-bottom:8px"><span class="chip ${L.status}">${locLabel(L.status)}</span><span class="muted">${L.candidates.join(' / ')} · current estimate</span></div>${LocalizationPanel.evidence(L)}`
+      : `<p class="note" style="margin:0">${L.status === 'insufficient' ? 'No segment currently has enough evidence for localization.' : `The current estimate points at ${L.candidates.join(' / ')}, not this alert's segment.`}</p>${LocalizationPanel.scoreBars(L)}`;
+  },
+};
+
+/* ============================================================
+   Toasts
+   ============================================================ */
+const Toasts = {
+  seen: new Set(),
+  push({ sev, title, body, alert }) {
+    const el = document.createElement('div'); el.className = 'toast';
+    el.innerHTML = `<span class="dot ${sev === 'info' ? '' : sev}" style="${sev === 'info' ? 'background:var(--steel-2)' : ''}"></span><div><b>${esc(title)}</b><p>${esc(body)}</p></div>${alert ? `<button class="btn sm ghost">View</button>` : '<span></span>'}`;
+    if (alert) el.querySelector('button').addEventListener('click', () => { Store.set({ alertId: alert }); go('alerts'); el.remove(); });
+    const box = $('#toasts'); box.prepend(el);
+    while (box.children.length > 3) box.lastChild.remove();
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 5200);
+  },
+  check(st) {
+    st.alerts.forEach(a => {
+      if (this.seen.has(a.id)) return; this.seen.add(a.id);
+      if (a.kind === 'localization') this.push({ sev: a.severity, title: a.description, body: `${a.id} · demo estimate, not a confirmed leak`, alert: a.id });
+      else if (a.severity === 'critical') this.push({ sev: 'critical', title: `Critical alert ${a.id}`, body: `${a.sensor} on ${a.segment} · ${a.description}`, alert: a.id });
+    });
+  },
+};
+
+/* ============================================================
+   App shell: routing, slot placement, render loop
+   ============================================================ */
+const ROUTES = ['overview', 'network', 'analytics', 'alerts'];
+function place(route) {
+  const view = $(`#view-${route}`);
+  const park = $('#parking');
+  [['viewer', '#viewer'], ['inspector', '#inspector'], ['sensors', '#sensorPanel']].forEach(([slot, id]) => {
+    const node = $(id); const target = view.querySelector(`[data-slot="${slot}"]`);
+    if (target) { if (node.parentElement !== target) target.appendChild(node); }
+    else if (node.parentElement !== park) park.appendChild(node);
+  });
+  requestAnimationFrame(() => Pipeline3DViewer.resize());
+}
+function applyRoute() {
+  const r = location.hash.slice(1);
+  const route = ROUTES.includes(r) ? r : 'overview';
+  Store.route = route;
+  ROUTES.forEach(x => $(`#view-${x}`).hidden = x !== route);
+  place(route);
+  $('#viewer').classList.toggle('compact', route === 'alerts');
+  renderAll();
+}
+function highlightFromStore() {
+  const st = E.getState();
+  if (Store.route === 'alerts') {
+    const a = st.alerts.find(x => x.id === Store.alertId);
+    return a ? { segments: a.segment.split(' / '), sensor: a.sensor !== '—' ? a.sensor : null } : { segments: [], sensor: null };
+  }
+  const s = Store.selection;
+  if (!s) return { segments: [], sensor: null };
+  if (s.type === 'segment') return { segments: [s.id], sensor: null };
+  return { segments: [], sensor: s.id };
+}
+function renderAll() {
+  const st = E.getState();
+  TopBar.render(st); Sidebar.render(st);
+  LocalizationPanel.banner(st);
+  Pipeline3DViewer.update(st);
+  Pipeline3DViewer.setHighlight(highlightFromStore());
+  Pipeline3DViewer.setFocus(Store.route === 'overview' ? focusSet(st, Store.focus) : null);
+  if (Store.route === 'overview') Overview.render(st);
+  if (Store.route === 'overview' || Store.route === 'network') { ObjectInspector.render(st); SensorMonitoring.render(st); }
+  if (Store.route === 'network') SegmentRail.render(st);
+  Analytics.render(st);
+  Alerts.render(st);
+}
+
+function boot() {
+  Sidebar.mount(); TopBar.mount(); SimulationControls.mount(); Overview.mount(); ObjectInspector.mount(); SensorMonitoring.mount();
+  SegmentRail.mount(); ViewerTools.mount(); Analytics.mount(); Alerts.mount();
+  E.getState().alerts.forEach(a => Toasts.seen.add(a.id));
+  if (typeof THREE !== 'undefined' && THREE.OrbitControls) {
+    try { Pipeline3DViewer.init($('#viewer'), { onPick: sel => { select(sel, { focus: !!sel }); } }); }
+    catch (err) { $('#viewerLoading').textContent = '3D view is unavailable in this browser (WebGL could not start).'; }
+  } else $('#viewerLoading').textContent = '3D libraries could not load. Check the network connection and reload.';
+  E.subscribe(st => { Toasts.check(st); renderAll(); });
+  Store.on(p => { if ('selection' in p || 'alertId' in p || 'labels' in p || 'flow' in p || 'focus' in p) renderAll(); });
+  window.addEventListener('hashchange', applyRoute);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && Store.selection) select(null); });
+  applyRoute();
+}
+boot();
+})();
+
+</script>
+
+</body>
+</html>
